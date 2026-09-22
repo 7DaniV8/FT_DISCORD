@@ -34,7 +34,8 @@ Rivales recientes (percentil FTR): Carlos 12 · Pedro 91
 Conclusión (explicada): La cuota de Pedro podría estar incorporando…
 ```
 
-Y **por voz, una sola vez, 10 minutos antes del partido**: "Atención
+Sale **una sola alerta por partido, 10 minutos antes de que empiece**: la
+ficha escrita (titulada "EMPIEZA EN 10 MINUTOS") y, por voz: "Atención
 FullTennis. En diez minutos empieza Carlos contra Pedro. Carlos pidió
 atención médica ayer y ganó igual. Pedro paga uno punto noventa y cinco. La cuota de Pedro
 podría estar incorporando el tiempo médico de Carlos, la mayor carga de
@@ -48,13 +49,13 @@ Todo es **informativo**: describe el contexto, no recomienda apostar. En el
 canal de texto la hora aparece como marca de tiempo de Discord, así cada
 persona la ve en su propia zona horaria.
 
-La ficha se escribe apenas está lista; la voz espera a los 10 minutos
-previos (lo decide FT Intelligence con la hora vigente del partido). Un
-partido sin hora confirmada queda solo con la ficha escrita.
+Nada se publica antes: el momento lo decide FT Intelligence con la hora
+vigente del partido. Un partido sin hora confirmada no se alerta (no hay
+cómo saber cuándo faltan 10 minutos); si la hora aparece después, sí. Si
+los dos jugadores están vigilados, es una sola alerta que menciona a ambos.
 
-**Variables de tipos.** Por defecto `FT_DISCORD_TIPOS_TEXTO` vale
-`REVISION_CUOTA` (la ficha) y `FT_DISCORD_TIPOS_VOZ` vale `REVISION_VOZ`
-(el aviso de 10 minutos). Si en Railway quedó cargada
+**Variables de tipos.** Por defecto `FT_DISCORD_TIPOS_TEXTO` y
+`FT_DISCORD_TIPOS_VOZ` valen `REVISION_VOZ` (la alerta de 10 minutos). Si en Railway quedó cargada
 otra lista de una versión anterior (por ejemplo `MTO_RECIENTE`), **hay que
 borrarla**: pisaría el valor por defecto y el bot no diría las revisiones.
 

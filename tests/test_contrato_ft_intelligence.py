@@ -97,7 +97,10 @@ evaluar(conn, inicio - timedelta(minutes=9))
 _, senales = asyncio.run(leer())
 aviso = [x for x in senales if x["tipo"] == "REVISION_VOZ"]
 va = texto_voz(aviso[0], "UTC", ahora) if aviso else ""
-check("a 9 minutos del partido, el aviso de voz real", len(aviso) == 1
+check("a 9 minutos del partido, la alerta real: voz", len(aviso) == 1
       and va.startswith("Atención FullTennis. En nueve minutos empieza Jugador Uno contra Jugador Dos"), va)
+ca = texto_canal(aviso[0]) if aviso else ""
+check("...y la ficha completa por escrito", "EMPIEZA EN 9 MINUTOS" in ca
+      and "¿Por qué Jugador Dos está a 2.4?" in ca, ca)
 print(f"\n{'─' * 60}\n{ok} comprobaciones OK." if not fallas else f"\n{fallas} FALLAS")
 sys.exit(1 if fallas else 0)

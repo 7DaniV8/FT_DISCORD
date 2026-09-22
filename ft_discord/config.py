@@ -6,14 +6,15 @@ from __future__ import annotations
 
 import os
 
-# Desde el motor de vigilancia de FT Intelligence (22/09/2026): por cada
-# jugador vigilado, REVISION_CUOTA (la ficha consolidada de su próximo
-# partido) se ESCRIBE apenas está lista, y REVISION_VOZ (la misma
-# conclusión) se DICE una sola vez, 10 minutos antes del partido. Los tipos del
+# Desde el motor de vigilancia de FT Intelligence (22/09/2026): se ALERTA
+# una sola vez por partido, 10 minutos antes de que empiece: REVISION_VOZ
+# trae la ficha completa, que se escribe, y su conclusión, que se dice.
+# REVISION_CUOTA (la revisión hecha al aparecer el partido con cuota) queda
+# como registro interno y no se publica. Los tipos del
 # barrido anterior (PARTIDO_NUEVO, CARGA_EXTREMA, MTO_RECIENTE, CUOTA_LEJOS,
 # RECORDATORIO, CAMBIO_HORA) ya no se generan, pero se siguen sabiendo
 # anunciar si alguien los vuelve a poner en estas variables.
-_TODOS = "REVISION_CUOTA"
+_TODOS = "REVISION_VOZ"
 _VOZ = "REVISION_VOZ"
 
 

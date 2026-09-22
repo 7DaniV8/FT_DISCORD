@@ -258,8 +258,8 @@ check("voz inexistente: devuelve None sin romper (el texto igual sale)", t2.sint
 
 print("\n5. Configuración")
 check("sin variables, dice qué falta", len(config.problemas()) == 3, "; ".join(config.problemas()))
-check("por defecto: la ficha por texto y la voz solo 10 minutos antes (nada del barrido)",
-      config.TIPOS_TEXTO == {"REVISION_CUOTA"} and config.TIPOS_VOZ == {"REVISION_VOZ"})
+check("por defecto: solo se alerta 10 minutos antes, por texto y por voz (nada del barrido)",
+      config.TIPOS_TEXTO == {"REVISION_VOZ"} and config.TIPOS_VOZ == {"REVISION_VOZ"})
 
 print("\n6. La ficha consolidada del motor de vigilancia")
 from ft_discord.textos import cuota_hablada  # noqa: E402
@@ -295,6 +295,17 @@ check("el aviso de 10 minutos empieza por lo urgente y sigue con la conclusión"
       va.startswith("Atención FullTennis. En diez minutos empieza Carlos Ruiz contra Pedro Soto. Carlos Ruiz pidió")
       and "Pedro Soto paga uno punto noventa y cinco" in va and "podría estar incorporando" in va
       and "MTO" not in va, va)
+ca = texto_canal({**aviso, "datos": {**aviso["datos"], "eventos": aviso["datos"]["eventos"] * 4,
+                                     "tambien_vigilados": [{"nombre": "Pedro Soto", "eventos": [
+                                         {"tipo": "RETIRO", "fecha": "2026-09-10", "score": "4-1 ret."}]}]}})
+check("la alerta escrita es la ficha completa, titulada 'EMPIEZA EN 10 MINUTOS'",
+      "FT INTELLIGENCE · EMPIEZA EN 10 MINUTOS" in ca and "¿Por qué Pedro Soto está a 1.95?" in ca
+      and "**Conclusión (explicada):**" in ca, ca)
+check("un evento repetido en los datos se muestra UNA vez", ca.count("pidió MTO el 21/09") == 1, ca)
+check("si el rival también está vigilado, lo dice (texto y voz)",
+      "👀 También vigilado: Pedro Soto vuelve tras retirarse el 10/09 (4-1 ret.)" in ca
+      and "También está vigilado Pedro Soto." in texto_voz({**aviso, "datos": {**aviso["datos"], "tambien_vigilados": [
+          {"nombre": "Pedro Soto", "eventos": []}]}}, "UTC", _ahora), ca)
 check("a 1 minuto y a 0 se dice distinto",
       "En un minuto empieza" in texto_voz({**aviso, "datos": {**aviso["datos"], "minutos": 1}}, "UTC", _ahora)
       and "Está por empezar" in texto_voz({**aviso, "datos": {**aviso["datos"], "minutos": 0}}, "UTC", _ahora))
