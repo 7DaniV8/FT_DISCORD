@@ -1,0 +1,9 @@
+# Versiones EXACTAS, las mismas con las que se probó (21/09/2026).
+# discord.py 2.7 es la primera con soporte DAVE (cifrado de voz que Discord
+# exige desde marzo de 2026); lo aporta `davey`, que instala el extra [voice].
+discord.py[voice]==2.7.1
+davey==0.1.6
+PyNaCl==1.5.0
+httpx==0.28.1
+# Base de zonas horarias por si la imagen no la trae (hora hablada local).
+tzdata==2026.4
