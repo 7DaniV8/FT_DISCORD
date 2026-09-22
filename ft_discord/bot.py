@@ -59,7 +59,8 @@ class Voz:
     """
 
     def __init__(self, cliente, canal_id: int, tts, max_cola: int,
-                 fuente_audio=None, al_reconectar=None, espera_reconexion: float = 5.0):
+                 fuente_audio=None, al_reconectar=None, espera_reconexion: float = 5.0,
+                 espera_dave: float = 15.0):
         self.cliente, self.canal_id, self.tts = cliente, canal_id, tts
         self.cola: asyncio.Queue = asyncio.Queue()
         self.max_cola = max_cola
@@ -70,13 +71,42 @@ class Voz:
         self._fuente_audio = fuente_audio or discord.FFmpegPCMAudio
         self._al_reconectar = al_reconectar
         self._espera_reconexion = espera_reconexion
+        self._espera_dave = espera_dave
         self.reconexiones = 0
 
+    def _dave(self) -> tuple:
+        """(versión del protocolo DAVE de la llamada, ¿se puede cifrar ya?).
+        Lee el estado interno de discord.py 2.7; con otra versión, sin él."""
+        conn = getattr(self.vc, "_connection", None)
+        return (getattr(conn, "dave_protocol_version", 0) or 0,
+                bool(getattr(conn, "can_encrypt", False)))
+
     def estado_dave(self) -> str:
-        """El código de privacidad existe si la sesión DAVE quedó negociada
-        (discord.py >= 2.7)."""
+        version, lista = self._dave()
+        if not version:
+            return "sin DAVE en esta llamada"
         codigo = getattr(self.vc, "voice_privacy_code", None) if self.vc else None
-        return f"activo (código {codigo})" if codigo else "sin código todavía"
+        return f"versión {version}, " + (f"activo (código {codigo})" if lista else "negociando")
+
+    async def esperar_dave(self) -> bool:
+        """
+        NO HABLAR ANTES DE QUE EL CIFRADO ESTÉ LISTO (22/09/2026). discord.py
+        2.7.1 manda el audio SIN el cifrado de extremo a extremo si la sesión
+        DAVE existe pero todavía no terminó de negociarse, y Discord corta la
+        llamada (código 4006). Pasó en la primera prueba real: el bot habló un
+        segundo después de conectarse. Se espera hasta `espera_dave`
+        segundos; si no queda listo, ese aviso no se dice (el texto ya salió).
+        """
+        loop = asyncio.get_running_loop()
+        limite = loop.time() + self._espera_dave
+        while loop.time() < limite:
+            version, lista = self._dave()
+            if not version or lista:
+                return True
+            await asyncio.sleep(0.25)
+        log.warning(f"[FTDiscord] el cifrado DAVE no quedó listo en {self._espera_dave:.0f} s "
+                    f"({self.estado_dave()}): no se reproduce, para no cortar la llamada")
+        return False
 
     def encolar(self, texto: str) -> bool:
         if self.cola.qsize() >= self.max_cola:
@@ -141,7 +171,7 @@ class Voz:
 
     async def decir_uno(self, texto: str) -> bool:
         ruta = await asyncio.to_thread(self.tts.sintetizar, texto)
-        if not ruta or not await self.asegurar_conexion():
+        if not ruta or not await self.asegurar_conexion() or not await self.esperar_dave():
             return False
         loop = asyncio.get_running_loop()
         fin = asyncio.Event()
@@ -203,7 +233,7 @@ class Bot(discord.Client):
                                 config.MAX_ANTIGUEDAD_MIN, config.SILENCIO_VOZ,
                                 umbral_agrupar=config.UMBRAL_AGRUPAR,
                                 voz_probabilidades=config.VOZ_PROBABILIDADES)
-        cursor = await anunciador.arrancar(config.DESDE_ID)
+        cursor = await anunciador.arrancar_con_reintentos(config.DESDE_ID)
         print(f"[FTDiscord] listo como {self.user} | texto #{canal} | voz: "
               f"{'sí' if voz else 'no'} | desde la señal #{cursor}", flush=True)
         if config.PRUEBA:
@@ -254,6 +284,10 @@ def _resumen(c: dict) -> str:
 
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    # httpx registra la URL completa de cada pedido. Nada secreto viaja ya en
+    # una URL, pero además son cientos de líneas por hora que tapan lo útil.
+    for ruidoso in ("httpx", "httpcore"):
+        logging.getLogger(ruidoso).setLevel(logging.WARNING)
     from discord import voice_state
     print(f"[FTDiscord] discord.py {discord.__version__} · soporte DAVE: "
           f"{'sí' if getattr(voice_state, 'has_dave', False) else 'NO (falta davey)'}", flush=True)

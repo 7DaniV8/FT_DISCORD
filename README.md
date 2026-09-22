@@ -106,12 +106,15 @@ Las pruebas automáticas cubren la lógica, los textos, la cola y el pedido
 de voz, pero **no** la cadena real: conexión → DAVE → reproducción →
 reconexión. Eso se prueba así, en este orden:
 
+0. **Entrar al canal de voz ANTES de desplegar.** El cifrado DAVE se negocia
+   con quienes están en la llamada; el bot no habla hasta que queda listo.
 1. **Arranque.** Con `FT_DISCORD_PRUEBA=1`, desplegar. En el log:
    `discord.py 2.7.1 · soporte DAVE: sí` y
    `listo como … | voz: sí | desde la señal #N`.
 2. **Conexión y DAVE.** En el log:
-   `conectado al canal de voz … · DAVE: activo (código …)`. El bot aparece
-   en el canal de voz, ensordecido.
+   `conectado al canal de voz … · DAVE: versión 1, negociando`. Es normal: el
+   cifrado termina de negociarse un momento después, y recién entonces habla.
+   El bot aparece en el canal de voz, ensordecido.
 3. **Reproducción.** En el canal de texto sale
    `🔧 Prueba de FT Discord · voz en … · cifrado DAVE: …`, y en el canal
    de voz se escucha: *"Atención FullTennis. Esta es una prueba de voz. Si
@@ -135,6 +138,11 @@ Si falla un paso, el log dice cuál:
 - **Sin audio con el bot conectado:** revisar la clave de Google y el nombre de voz.
 - **No encuentra libopus:** es un problema de la imagen; el Dockerfile lo instala.
 - **No vuelve tras desconectarlo:** el log dice `no se pudo entrar al canal de voz` con el motivo.
+- **`el cifrado DAVE no quedó listo en 15 s`:** el bot se salteó ese aviso para no
+  mandar audio sin cifrar. discord.py 2.7.1 lo manda sin el cifrado de extremo a
+  extremo si la sesión DAVE todavía no terminó de negociarse, y Discord corta la
+  llamada con el código 4006. Pasó en la primera prueba real, y por eso el bot
+  espera. Si se repite con gente en el canal, pegar el log completo.
 
 Por qué importa el paso 4: cuando alguien echa al bot, discord.py no
 reconecta solo, y la conexión muerta puede quedar registrada en el servidor.
@@ -205,3 +213,12 @@ ft_discord/
   anunciador.py  qué se anuncia y por dónde (sin Discord adentro)
   bot.py         Discord: canal de texto, voz 24/7 con reconexión y cola
 ```
+
+## Seguridad de la clave de voz
+
+La clave de Google viaja en la cabecera `X-Goog-Api-Key`, nunca en la
+dirección, y el bot no registra las direcciones de sus pedidos HTTP. Hasta la
+v3, la clave iba en la dirección y quedaba escrita en el log de Railway: si se
+usó una versión anterior, hay que **regenerar la clave** en Google Cloud
+(Credentials → la clave → Regenerate key) y cargar la nueva en
+`GOOGLE_TTS_API_KEY`.

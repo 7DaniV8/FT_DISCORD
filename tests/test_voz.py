@@ -17,6 +17,9 @@ muerta queda registrada en el servidor (guild.voice_client).
   6. Dos intentos a la vez: una sola conexión (candado).
   7. Una falla transitoria no rompe nada y el intento siguiente funciona.
   8. El resumen por hora para el día de observación.
+  9. No hablar antes de que el cifrado DAVE esté listo (el 4006 de la
+     primera prueba real), y el arranque que reintenta si FT Intelligence
+     no responde.
 
 Lo que esto NO prueba es la red real, DAVE y el audio en tu servidor:
 eso es la prueba en vivo del README.
@@ -55,6 +58,8 @@ def check(nombre: str, condicion: bool, detalle: str = ""):
 class FakeVC:
     def __init__(self, canal):
         self.channel, self.connected, self.voice_privacy_code = canal, True, "12345"
+        # Estado interno de discord.py 2.7 que mira esperar_dave().
+        self._connection = SimpleNamespace(dave_protocol_version=1, can_encrypt=True)
         self.reproducidos, self.desconexiones = [], 0
 
     def is_connected(self):
@@ -128,7 +133,8 @@ async def escenario():
 
     print("\n1. Primera conexión")
     check("se conecta y muestra el estado DAVE", await voz.asegurar_conexion()
-          and canal.conexiones == 1 and voz.estado_dave() == "activo (código 12345)")
+          and canal.conexiones == 1 and voz.estado_dave() == "versión 1, activo (código 12345)",
+          voz.estado_dave())
     check("dice un aviso", await voz.decir_uno("hola") and len(voz.vc.reproducidos) == 1)
     check("la primera conexión no cuenta como reconexión", voz.reconexiones == 0 and not avisos_reconexion)
 
@@ -224,6 +230,62 @@ async def resumen():
           hora == {"texto": 3, "voz": 1} and hora2 == {} and total2 == {"texto": 3, "voz": 1})
 
 asyncio.run(resumen())
+
+print("\n9. Cifrado DAVE antes de hablar, y arranque con reintentos")
+
+
+async def dave():
+    guild = FakeGuild()
+    canal = FakeCanal(99, guild)
+    voz = Voz(FakeCliente({99: canal}), 99, FakeTTS(), 5,
+              fuente_audio=lambda ruta: f"audio:{ruta}", espera_dave=0.6)
+    await voz.asegurar_conexion()
+    voz.vc._connection.can_encrypt = False       # recién conectado: DAVE negociando
+    check("mientras negocia, el estado lo dice", voz.estado_dave() == "versión 1, negociando",
+          voz.estado_dave())
+
+    async def queda_listo():
+        await asyncio.sleep(0.3)
+        voz.vc._connection.can_encrypt = True
+    asyncio.create_task(queda_listo())
+    t0 = asyncio.get_running_loop().time()
+    ok = await voz.decir_uno("hola")
+    espero = asyncio.get_running_loop().time() - t0
+    check("espera a que el cifrado esté listo y recién ahí habla",
+          ok and len(voz.vc.reproducidos) == 1 and espero >= 0.25, f"esperó {espero:.2f} s")
+    voz.vc._connection.can_encrypt = False       # nunca queda listo
+    ok = await voz.decir_uno("no debería sonar")
+    check("si nunca queda listo, NO reproduce (no manda audio sin cifrar)",
+          ok is False and len(voz.vc.reproducidos) == 1)
+    voz.vc._connection = SimpleNamespace(dave_protocol_version=0, can_encrypt=False)
+    check("en una llamada sin DAVE habla sin esperar",
+          await voz.decir_uno("sin dave") and len(voz.vc.reproducidos) == 2)
+
+asyncio.run(dave())
+
+
+class FuenteQueFalla:
+    def __init__(self):
+        self.intentos = 0
+
+    async def ultimo_id(self):
+        self.intentos += 1
+        if self.intentos < 3:
+            raise RuntimeError("FT Intelligence HTTP 404")
+        return 57
+
+    async def leer(self, desde):
+        return []
+
+
+async def reintentos():
+    f = FuenteQueFalla()
+    a = Anunciador(f, lambda t: asyncio.sleep(0), lambda t: True, "UTC", set(), set(), 30)
+    cursor = await a.arrancar_con_reintentos(espera=0)
+    check("si FT Intelligence no responde al arrancar, reintenta hasta lograrlo",
+          cursor == 57 and f.intentos == 3, f"{f.intentos} intentos")
+
+asyncio.run(reintentos())
 
 print(f"\n{'─' * 60}")
 if _fallos:

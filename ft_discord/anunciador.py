@@ -14,6 +14,7 @@ Un error al publicar no frena a las siguientes señales.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections import Counter
 from datetime import datetime, timezone
@@ -58,6 +59,20 @@ class Anunciador:
     async def arrancar(self, desde_id: int = -1) -> int:
         self.cursor = await self.fuente.ultimo_id() if desde_id < 0 else desde_id
         return self.cursor
+
+    async def arrancar_con_reintentos(self, desde_id: int = -1, espera: float = 15.0,
+                                      max_espera: float = 300.0) -> int:
+        """Si FT Intelligence no responde al arrancar (caído, dirección mal
+        puesta), reintenta con espera creciente en vez de dejar el bot
+        conectado pero mudo hasta el próximo reinicio."""
+        while True:
+            try:
+                return await self.arrancar(desde_id)
+            except Exception as e:               # noqa: BLE001
+                log.warning(f"[FTDiscord] FT Intelligence no responde al arrancar ({e}); "
+                            f"reintento en {espera:.0f} s")
+                await asyncio.sleep(espera)
+                espera = min(espera * 2, max_espera)
 
     def _vieja(self, s: dict) -> bool:
         creado = datetime.fromisoformat(str(s["creado_en"]).replace("Z", "+00:00"))

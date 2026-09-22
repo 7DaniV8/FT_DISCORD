@@ -33,7 +33,10 @@ class TTSGoogle:
 
     def sintetizar(self, texto: str) -> Optional[Path]:
         try:
-            r = self._http.post(URL_GOOGLE, params={"key": self._clave}, json={
+            # La clave va en una CABECERA, no en la URL: httpx registra la URL
+            # de cada pedido, y con ?key=... la clave terminaba en el log de
+            # Railway (22/09/2026).
+            r = self._http.post(URL_GOOGLE, headers={"X-Goog-Api-Key": self._clave}, json={
                 "input": {"text": texto},
                 "voice": {"languageCode": self._idioma, "name": self._voz},
                 "audioConfig": {"audioEncoding": "OGG_OPUS", "speakingRate": self._velocidad}})

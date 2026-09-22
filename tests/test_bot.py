@@ -237,7 +237,8 @@ visto: dict = {}
 
 
 def google(req: httpx.Request) -> httpx.Response:
-    visto["key"] = parse_qs(req.url.query.decode()).get("key", [""])[0]
+    visto["url"] = str(req.url)
+    visto["cabecera"] = req.headers.get("X-Goog-Api-Key")
     visto["cuerpo"] = json.loads(req.content)
     if visto["cuerpo"]["voice"]["name"] == "voz-inexistente":
         return httpx.Response(400, json={"error": {"message": "Voice does not exist"}})
@@ -246,8 +247,10 @@ def google(req: httpx.Request) -> httpx.Response:
 
 t = TTSGoogle("CLAVE", "es-US", "es-US-Neural2-B", 1.0, transport=httpx.MockTransport(google))
 ruta = t.sintetizar("Atención FullTennis.")
+check("la clave viaja en la cabecera y NUNCA en la dirección (que httpx registra)",
+      visto["cabecera"] == "CLAVE" and "CLAVE" not in visto["url"], visto["url"])
 check("pide OGG_OPUS con la voz y el idioma configurados, y guarda el audio",
-      visto["key"] == "CLAVE" and visto["cuerpo"]["audioConfig"]["audioEncoding"] == "OGG_OPUS"
+      visto["cuerpo"]["audioConfig"]["audioEncoding"] == "OGG_OPUS"
       and visto["cuerpo"]["voice"] == {"languageCode": "es-US", "name": "es-US-Neural2-B"}
       and ruta is not None and ruta.read_bytes() == b"OggS-audio")
 t2 = TTSGoogle("CLAVE", "es-US", "voz-inexistente", 1.0, transport=httpx.MockTransport(google))
