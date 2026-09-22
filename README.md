@@ -49,6 +49,22 @@ Todo es **informativo**: describe el contexto, no recomienda apostar. En el
 canal de texto la hora aparece como marca de tiempo de Discord, así cada
 persona la ve en su propia zona horaria.
 
+**Solo alerta un CANDIDATO.** FT Intelligence revisa a cada vigilado, pero
+solo manda la alerta cuando encuentra una discrepancia clara entre el FTR y
+el mercado respaldada por varias piezas independientes (la segunda puerta:
+DESCARTADO, OBSERVAR o CANDIDATO). Los descartados y los observados se
+guardan para el backtest y no suenan. La alerta de un CANDIDATO dice el
+lado con valor y su cuota, mercado contra FTR y Elo, el evento del vigilado,
+la salud y las piezas a favor:
+
+```
+🔥 FT INTELLIGENCE · CANDIDATO · EMPIEZA EN 10 MINUTOS
+Pedro @3.8. El mercado le asigna 25%, mientras el FTR lo sitúa en 40% (Elo 42%).
+🩹 Carlos pidió MTO el 21/09 y ganó igual
+🔎 Salud: sin confirmar (investigador pendiente)
+A favor: el Elo también ve a Pedro por encima del mercado; Carlos llega más cargado.
+```
+
 Nada se publica antes: el momento lo decide FT Intelligence con la hora
 vigente del partido. Un partido sin hora confirmada no se alerta (no hay
 cómo saber cuándo faltan 10 minutos); si la hora aparece después, sí. Si

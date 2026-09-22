@@ -309,6 +309,25 @@ check("si el rival también está vigilado, lo dice (texto y voz)",
 check("a 1 minuto y a 0 se dice distinto",
       "En un minuto empieza" in texto_voz({**aviso, "datos": {**aviso["datos"], "minutos": 1}}, "UTC", _ahora)
       and "Está por empezar" in texto_voz({**aviso, "datos": {**aviso["datos"], "minutos": 0}}, "UTC", _ahora))
+cand = {**aviso, "datos": {**aviso["datos"], "decision": {
+    "clasificacion": "CANDIDATO", "version": "decision.v1", "jugador": "Pedro Soto", "cuota": 2.6,
+    "mercado": 0.38, "ftr": 0.56, "elo": 0.53,
+    "a_favor": [{"texto": "el Elo también ve a Pedro Soto por encima del mercado (53 % contra 38 %)",
+                 "corto": "el Elo lo acompaña"},
+                {"texto": "Carlos Ruiz llega más cargado (7 partidos en 8 días contra 3)",
+                 "corto": "Carlos Ruiz llega más cargado"}], "en_contra": []}}}
+cc = texto_canal(cand)
+check("CANDIDATO por escrito: el lado con valor, su cuota, mercado contra FTR, y las piezas a favor",
+      "🔥 **FT INTELLIGENCE · CANDIDATO · EMPIEZA EN 10 MINUTOS**" in cc
+      and "**Pedro Soto @2.6.** El mercado le asigna 38%, mientras el FTR lo sitúa en 56% (Elo 53%)." in cc
+      and "A favor: el Elo también ve a Pedro Soto" in cc and "Salud: sin confirmar" in cc
+      and "no es una recomendación" in cc, cc)
+vc = texto_voz(cand, "UTC", _ahora)
+check("CANDIDATO por voz: lo urgente, la cuota, mercado contra FTR y los apoyos",
+      vc.startswith("Atención FullTennis. En diez minutos empieza Carlos Ruiz contra Pedro Soto. "
+                    "Candidato: Pedro Soto paga dos punto seis. El mercado le da treinta y ocho por ciento; "
+                    "el FTR, cincuenta y seis por ciento.")
+      and "A favor: el Elo lo acompaña y Carlos Ruiz llega más cargado." in vc and "MTO" not in vc, vc)
 rev["datos"]["eventos"] = [{"tipo": "RETIRO", "fecha": "2026-09-12"}]
 check("un retiro se dice 'vuelve tras retirarse'", "vuelve tras retirarse hace diez días"
       in texto_voz(rev, "UTC", _ahora) and "🔄 Carlos Ruiz vuelve tras retirarse el 12/09" in texto_canal(rev))

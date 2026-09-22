@@ -54,18 +54,24 @@ for pid, n in ((1, "Jugador Uno"), (2, "Jugador Dos"), (3, "Jugador Tres")):
     conn.execute("INSERT INTO players VALUES (?,?,?,?,?)", (pid, n, n.lower(), "M", "x"))
     conn.execute("INSERT INTO ratings (player_id, superficie, rating, partidos_jugados, sincronizado_en) "
                  "VALUES (?, 'general', 11, 40, 'x')", (pid,))
-# Uno pidió MTO ayer contra Tres, y ganó igual: queda vigilado.
+# Uno pidió MTO ayer contra Tres, y ganó igual: queda vigilado. Llega con 3
+# partidos en 8 días; Dos, descansado.
 for mid, a, b, sg, sp in ((1, 1, 3, 2, 1), (2, 3, 1, 1, 2)):
     conn.execute("INSERT INTO ftr_partidos (match_id, player_id, opponent_id, fecha, score, sets_ganados, "
                  "sets_perdidos, sincronizado_en) VALUES (?,?,?,?, '6-4 3-6 6-2', ?,?, 'x')",
                  (mid, a, b, ayer.isoformat() + "T10:00:00+00:00", sg, sp))
+for mid, k in ((3, 2), (4, 3)):
+    conn.execute("INSERT INTO ftr_partidos (match_id, player_id, opponent_id, fecha, score, sets_ganados, "
+                 "sets_perdidos, sincronizado_en) VALUES (?, 1, 3, ?, '6-3 6-3', 2, 0, 'x')",
+                 (mid, (ahora.date() - timedelta(days=k)).isoformat() + "T10:00:00+00:00"))
 conn.execute("INSERT INTO ftr_mto (id, fecha_partido, home, away, torneo, genero, jugador_mto, creado_en, "
              "sincronizado_en) VALUES (1, ?, 'Jugador Uno', 'Jugador Tres', 'M25 Test', 'M', 'Jugador Uno', "
              "?, 'x')", (ayer.isoformat(), ayer.isoformat() + "T11:00:00+00:00"))
-# Su próximo partido, con cuota: se revisa.
+# Su próximo partido, con cuota: el mercado le da a Dos 25 % y el FTR 40 %;
+# el Elo lo acompaña y Uno llega más cargado: CANDIDATO del lado de Dos.
 conn.execute("INSERT INTO ftr_fixtures (fixture_id, par_norm, fecha, torneo, genero, jugador1, jugador2, "
              "odd1, odd2, ftr1, ftr2, prob_ftr, prob_elo, favorito_nombre, primer_visto, ultimo_visto) "
-             "VALUES (1, 'p', ?, 'M25 Test', 'M', 'Jugador Uno', 'Jugador Dos', 1.6, 2.4, 12, 10, "
+             "VALUES (1, 'p', ?, 'M25 Test', 'M', 'Jugador Uno', 'Jugador Dos', 1.3, 3.8, 12, 10, "
              "0.6, 0.58, 'Jugador Uno', 'x', 'x')", (inicio.isoformat(),))
 conn.commit()
 resolver_mto_pendientes(conn)
@@ -86,21 +92,22 @@ check("el bot lee la revisión real y el último id", ultimo == 1 and len(senale
 s = senales[0]
 canal = texto_canal(s)
 check("la ficha del canal, armada con los datos reales", "REVISIÓN DE CUOTA" in canal
-      and "¿Por qué Jugador Dos está a 2.4?" in canal and "investigador pendiente" in canal
+      and "¿Por qué Jugador Dos está a 3.8?" in canal and "investigador pendiente" in canal
       and "<t:" in canal, canal)
 voz = texto_voz(s, "UTC", ahora)
 check("la conclusión por voz, armada con los datos reales",
       voz.startswith("Atención FullTennis. Revisión de cuota: Jugador Uno contra Jugador Dos")
-      and "pidió atención médica ayer y ganó igual" in voz and "Jugador Dos paga dos punto cuatro" in voz
+      and "pidió atención médica ayer y ganó igual" in voz and "Jugador Dos paga tres punto ocho" in voz
       and "MTO" not in voz, voz)
 evaluar(conn, inicio - timedelta(minutes=9))
 _, senales = asyncio.run(leer())
 aviso = [x for x in senales if x["tipo"] == "REVISION_VOZ"]
 va = texto_voz(aviso[0], "UTC", ahora) if aviso else ""
-check("a 9 minutos del partido, la alerta real: voz", len(aviso) == 1
-      and va.startswith("Atención FullTennis. En nueve minutos empieza Jugador Uno contra Jugador Dos"), va)
+check("a 9 minutos del partido, la alerta real del CANDIDATO: voz", len(aviso) == 1
+      and va.startswith("Atención FullTennis. En nueve minutos empieza Jugador Uno contra Jugador Dos. "
+                        "Candidato: Jugador Dos paga tres punto ocho."), va)
 ca = texto_canal(aviso[0]) if aviso else ""
-check("...y la ficha completa por escrito", "EMPIEZA EN 9 MINUTOS" in ca
-      and "¿Por qué Jugador Dos está a 2.4?" in ca, ca)
+check("...y por escrito, con las piezas que la respaldan", "CANDIDATO · EMPIEZA EN 9 MINUTOS" in ca
+      and "**Jugador Dos @3.8.**" in ca and "A favor:" in ca and "Jugador Uno llega más cargado" in ca, ca)
 print(f"\n{'─' * 60}\n{ok} comprobaciones OK." if not fallas else f"\n{fallas} FALLAS")
 sys.exit(1 if fallas else 0)
