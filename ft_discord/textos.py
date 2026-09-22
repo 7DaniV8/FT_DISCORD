@@ -254,6 +254,21 @@ def _es_candidato(d: dict) -> bool:
     return (d.get("decision") or {}).get("clasificacion") == "CANDIDATO"
 
 
+_VOZ_CONFIANZA = {"EXPERIMENTAL": "Evidencia todavía escasa: es de los primeros casos de este tipo.",
+                  "EN_VALIDACION": "La regla todavía está en validación."}
+
+
+def _linea_confianza(d: dict) -> list:
+    """Candidato es 'pasó las reglas de hoy'; la evidencia dice CUÁNTOS casos
+    comparables ya se cerraron. El rendimiento va aparte, sin juzgarlo: con
+    muestra chica cualquier porcentaje se mueve solo."""
+    c = d.get("confianza") or {}
+    if not c.get("etiqueta"):
+        return []
+    return [c["etiqueta"], c.get("texto", "")] + [x for x in (c.get("rendimiento"),) if x] + \
+           [f"⚠️ {c['aviso']}" for _ in (1,) if c.get("aviso")]
+
+
 def _linea_seguimiento(d: dict) -> list:
     """Qué hizo el jugador después del evento, según nuestros propios datos."""
     frase = (d.get("seguimiento") or {}).get("frase")
@@ -279,6 +294,7 @@ def texto_candidato(s: dict) -> str:
     for otro in d.get("tambien_vigilados") or []:
         lineas += ["👀 También vigilado: " + linea.split(" ", 1)[1]
                    for linea in _lineas_evento(otro.get("nombre", "?"), otro.get("eventos") or [])]
+    lineas += _linea_confianza(d)
     lineas.append(f"_Candidato del motor, a validar con el backtest: no es una recomendación · "
                   f"{dec.get('version', '')} · señal #{s['id']}_")
     return "\n".join(lineas)
@@ -298,7 +314,8 @@ def voz_candidato(s: dict, zona: str, ahora: Optional[datetime] = None) -> str:
              + (f"{v.get('nombre')} {' y '.join(frases)}. " if frases else "")
              + (f"A favor: {', '.join(apoyos[:-1]) + ' y ' + apoyos[-1] if len(apoyos) > 1 else apoyos[0]}."
                 if apoyos else ""))
-    return ("Atención FullTennis. " + texto).replace("MTO", "tiempo médico")
+    extra = _VOZ_CONFIANZA.get((d.get("confianza") or {}).get("nivel"), "")
+    return ("Atención FullTennis. " + texto + (f" {extra}" if extra else "")).replace("MTO", "tiempo médico")
 
 
 def voz_aviso(s: dict, zona: str, ahora: Optional[datetime] = None) -> str:

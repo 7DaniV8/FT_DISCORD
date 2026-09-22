@@ -322,6 +322,22 @@ check("CANDIDATO por escrito: el lado con valor, su cuota, mercado contra FTR, y
       and "**Pedro Soto @2.6.** El mercado le asigna 38%, mientras el FTR lo sitúa en 56% (Elo 53%)." in cc
       and "A favor: el Elo también ve a Pedro Soto" in cc and "Salud: sin confirmar" in cc
       and "no es una recomendación" in cc, cc)
+cand_conf = {**cand, "datos": {**cand["datos"], "confianza": {
+    "nivel": "EXPERIMENTAL", "etiqueta": "🔴 EVIDENCIA: EXPERIMENTAL", "casos": 4,
+    "texto": "4 casos comparables cerrados", "rendimiento": "1-3 · -1.4 U · ROI -35.0 %",
+    "aviso": "Regla todavía con muestra pequeña."}}}
+cc2 = texto_canal(cand_conf)
+check("la evidencia se muestra aparte del rendimiento, y el caso sigue siendo candidato",
+      "CANDIDATO" in cc2 and "🔴 EVIDENCIA: EXPERIMENTAL" in cc2 and "4 casos comparables cerrados" in cc2
+      and "1-3 · -1.4 U · ROI -35.0 %" in cc2 and "⚠️ Regla todavía con muestra pequeña." in cc2, cc2)
+check("con muestra amplia no hay aviso, y se ve el rendimiento igual",
+      (lambda c: "🟢 EVIDENCIA: MUESTRA AMPLIA" in c and "82-55" in c and "⚠️" not in c)(
+          texto_canal({**cand, "datos": {**cand["datos"], "confianza": {
+              "nivel": "MUESTRA_AMPLIA", "etiqueta": "🟢 EVIDENCIA: MUESTRA AMPLIA", "casos": 137,
+              "texto": "137 casos comparables cerrados", "rendimiento": "82-55 · +14.7 U · ROI +10.7 %",
+              "aviso": None}}})))
+check("y la voz lo dice en una frase",
+      "Evidencia todavía escasa" in texto_voz(cand_conf, "UTC", _ahora))
 vc = texto_voz(cand, "UTC", _ahora)
 check("CANDIDATO por voz: lo urgente, la cuota, mercado contra FTR y los apoyos",
       vc.startswith("Atención FullTennis. En diez minutos empieza Carlos Ruiz contra Pedro Soto. "
