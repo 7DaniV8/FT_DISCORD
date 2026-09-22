@@ -6,11 +6,15 @@ from __future__ import annotations
 
 import os
 
-_TODOS = "PARTIDO_NUEVO,CARGA_EXTREMA,MTO_RECIENTE,CUOTA_LEJOS,RECORDATORIO,CAMBIO_HORA"
-# Por voz, un partido se dice UNA vez: 15 minutos antes (RECORDATORIO). El
-# aviso de partido nuevo va por texto, como calendario. Para decirlo también
-# en voz al detectarlo, agregar PARTIDO_NUEVO a FT_DISCORD_TIPOS_VOZ.
-_VOZ = "CARGA_EXTREMA,MTO_RECIENTE,CUOTA_LEJOS,RECORDATORIO,CAMBIO_HORA"
+# Desde el motor de vigilancia de FT Intelligence (22/09/2026): por cada
+# jugador vigilado, REVISION_CUOTA (la ficha consolidada de su próximo
+# partido) se ESCRIBE apenas está lista, y REVISION_VOZ (la misma
+# conclusión) se DICE una sola vez, 10 minutos antes del partido. Los tipos del
+# barrido anterior (PARTIDO_NUEVO, CARGA_EXTREMA, MTO_RECIENTE, CUOTA_LEJOS,
+# RECORDATORIO, CAMBIO_HORA) ya no se generan, pero se siguen sabiendo
+# anunciar si alguien los vuelve a poner en estas variables.
+_TODOS = "REVISION_CUOTA"
+_VOZ = "REVISION_VOZ"
 
 
 def _lista(nombre: str, defecto: str) -> set:

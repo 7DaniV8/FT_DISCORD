@@ -16,9 +16,9 @@ from datetime import date, datetime, timezone
 from typing import Optional
 from zoneinfo import ZoneInfo
 
-EMOJI = {"PARTIDO_NUEVO": "🎾", "CARGA_EXTREMA": "🔋", "MTO_RECIENTE": "🩹", "CUOTA_LEJOS": "📊",
+EMOJI = {"REVISION_CUOTA": "📊", "PARTIDO_NUEVO": "🎾", "CARGA_EXTREMA": "🔋", "MTO_RECIENTE": "🩹", "CUOTA_LEJOS": "📊",
          "RECORDATORIO": "⏳", "CAMBIO_HORA": "🕐"}
-TITULO = {"PARTIDO_NUEVO": "NUEVO PARTIDO", "CARGA_EXTREMA": "CARGA EXTREMA", "MTO_RECIENTE": "MTO RECIENTE",
+TITULO = {"REVISION_CUOTA": "REVISIÓN DE CUOTA", "REVISION_VOZ": "AVISO DE VOZ", "PARTIDO_NUEVO": "NUEVO PARTIDO", "CARGA_EXTREMA": "CARGA EXTREMA", "MTO_RECIENTE": "MTO RECIENTE",
           "CUOTA_LEJOS": "CUOTA LEJOS DEL FTR", "RECORDATORIO": "PRÓXIMO PARTIDO",
           "CAMBIO_HORA": "CAMBIO DE HORA"}
 
@@ -138,8 +138,111 @@ def cuando_texto(senal: dict) -> str:
 
 
 # ── texto para el canal ──────────────────────────────────────────────
+def cuota_hablada(c: Optional[float]) -> str:
+    """1.95 -> 'uno punto noventa y cinco'; 2.05 -> 'dos punto cero cinco'."""
+    if not c:
+        return "sin cuota"
+    entero, _, dec = f"{c:.2f}".partition(".")
+    dec = dec.rstrip("0")
+    if not dec:
+        return numero(int(entero))
+    return f"{numero(int(entero))} punto " + ("cero " + numero(int(dec)) if dec.startswith("0")
+                                              else numero(int(dec)))
+
+
+def _ddmm(fecha: str) -> str:
+    return f"{fecha[8:10]}/{fecha[5:7]}"
+
+
+def _lineas_evento(nv: str, eventos: list) -> list:
+    lineas = []
+    for e in eventos:
+        rival = f"contra {e['rival']}" if e.get("rival") else ""
+        extra = ", ".join(x for x in (rival, e.get("score")) if x)
+        if e.get("tipo") == "MTO_GANO":
+            lineas.append(f"🩹 {nv} pidió MTO el {_ddmm(e['fecha'])} y ganó igual" + (f" ({extra})" if extra else ""))
+        else:
+            lineas.append(f"🔄 {nv} vuelve tras retirarse el {_ddmm(e['fecha'])}" + (f" ({extra})" if extra else ""))
+    return lineas
+
+
+def texto_revision(s: dict) -> str:
+    """La ficha consolidada del motor de vigilancia: el evento, la
+    investigación, la pregunta por la cuota del rival, los datos y la
+    conclusión."""
+    d = s.get("datos") or {}
+    v, r = d.get("vigilado") or {}, d.get("rival") or {}
+    nv, nr = v.get("nombre", "?"), r.get("nombre", "?")
+    inv = d.get("investigacion")
+    lineas = [f"🧠 {EMOJI['REVISION_CUOTA']} **FT INTELLIGENCE · REVISIÓN DE CUOTA**",
+              f"**{s['jugador1']}** vs **{s['jugador2']}** · {s.get('torneo') or ''} · {cuando_texto(s)}",
+              *_lineas_evento(nv, d.get("eventos") or []),
+              "🔎 Causa: " + ((inv or {}).get("resumen") or "sin confirmar")
+              + ("" if inv else " (investigador pendiente)"),
+              f"**¿Por qué {nr} está a {r.get('cuota')}?**",
+              f"{nr}: mercado {porc(r.get('mercado'))} · FTR {porc(r.get('ftr'))} · Elo {porc(r.get('elo'))}"]
+    cv, cr = v.get("carga") or {}, r.get("carga") or {}
+    if cv:
+        lineas.append(f"Carga ({cv.get('ventana_dias')} días): {nv} {cv.get('partidos')} · "
+                      f"{nr} {cr.get('partidos', 's/d')}")
+    ov, orr = v.get("oposicion") or {}, r.get("oposicion") or {}
+    if ov or orr:
+        lineas.append(f"Rivales recientes (percentil FTR): {nv} {ov.get('percentil', 's/d')} · "
+                      f"{nr} {orr.get('percentil', 's/d')}")
+    concl = d.get("conclusion") or {}
+    etiqueta = {"EN_LINEA": "cuota en línea", "EXPLICADA": "explicada",
+                "SIN_EXPLICACION": "sin explicación suficiente"}.get(concl.get("tipo"), "")
+    lineas.append(f"**Conclusión{' (' + etiqueta + ')' if etiqueta else ''}:** {concl.get('texto', '')}")
+    lineas.append(f"_Informativo, no es una recomendación · {s.get('version_regla')} · señal #{s['id']}_")
+    return "\n".join(lineas)
+
+
+def _voz_cuerpo(d: dict, zona: str, ahora: Optional[datetime]) -> str:
+    """El evento del vigilado, lo que paga el rival y la conclusión."""
+    v, r = d.get("vigilado") or {}, d.get("rival") or {}
+    nv, nr = v.get("nombre", ""), r.get("nombre", "")
+    hoy = (ahora or datetime.now(timezone.utc)).astimezone(ZoneInfo(zona)).date()
+    frases = []
+    eventos = d.get("eventos") or []
+    for tipo, uno, varios in (("MTO_GANO", "pidió atención médica {hace} y ganó igual",
+                               "pidió atención médica {n} veces en los últimos días y ganó igual"),
+                              ("RETIRO", "vuelve tras retirarse {hace}", "vuelve tras retirarse")):
+        de_tipo = [e for e in eventos if e.get("tipo") == tipo]
+        if not de_tipo:
+            continue
+        dias = (hoy - date.fromisoformat(max(e["fecha"] for e in de_tipo)[:10])).days
+        hace = "hoy" if dias <= 0 else "ayer" if dias == 1 else f"hace {numero(dias, apocope=True)} días"
+        frases.append(uno.format(hace=hace) if len(de_tipo) == 1 else varios.format(n=numero(len(de_tipo))))
+    return ((f"{nv} {' y '.join(frases)}. " if frases else "")
+            + f"{nr} paga {cuota_hablada(r.get('cuota'))}. "
+            + ((d.get("conclusion") or {}).get("voz") or ""))
+
+
+def voz_revision(s: dict, zona: str, ahora: Optional[datetime] = None) -> str:
+    frase = (f"Revisión de cuota: {s['jugador1']} contra {s['jugador2']}, "
+             f"{cuando_hablado(s, zona, ahora)}. " + _voz_cuerpo(s.get("datos") or {}, zona, ahora))
+    return "Atención FullTennis. " + frase.replace("MTO", "tiempo médico")
+
+
+def voz_aviso(s: dict, zona: str, ahora: Optional[datetime] = None) -> str:
+    """El aviso de voz, 10 minutos antes: primero lo urgente (quién juega y
+    cuándo), después el evento, lo que paga el rival y la conclusión."""
+    d = s.get("datos") or {}
+    m = d.get("minutos", 10)
+    j1, j2 = s["jugador1"], s["jugador2"]
+    inicio = (f"Está por empezar {j1} contra {j2}." if m <= 0 else
+              f"En un minuto empieza {j1} contra {j2}." if m == 1 else
+              f"En {numero(m, apocope=True)} minutos empieza {j1} contra {j2}.")
+    return ("Atención FullTennis. " + inicio + " " + _voz_cuerpo(d, zona, ahora)).replace("MTO", "tiempo médico")
+
+
 def texto_canal(s: dict) -> str:
     tipo, d = s["tipo"], s.get("datos") or {}
+    if tipo == "REVISION_CUOTA":
+        return texto_revision(s)
+    if tipo == "REVISION_VOZ":                   # por defecto no se escribe: la ficha ya está
+        return (f"🔊 En {d.get('minutos', 10)} minutos: **{s['jugador1']}** vs **{s['jugador2']}** "
+                f"(revisión #{d.get('revision_id', '?')})")
     cab = (f"🧠 {EMOJI.get(tipo, '')} **FT INTELLIGENCE · {TITULO.get(tipo, tipo)}**\n"
            f"**{s['jugador1']}** vs **{s['jugador2']}** · {s.get('torneo') or ''} · "
            f"{cuando_texto(s)}")
@@ -178,6 +281,10 @@ def porc(p: Optional[float]) -> str:
 def texto_voz(s: dict, zona: str, ahora: Optional[datetime] = None,
               con_probabilidades: bool = True) -> str:
     tipo, d = s["tipo"], s.get("datos") or {}
+    if tipo == "REVISION_CUOTA":
+        return voz_revision(s, zona, ahora)
+    if tipo == "REVISION_VOZ":
+        return voz_aviso(s, zona, ahora)
     j1, j2 = s["jugador1"], s["jugador2"]
     cuando = cuando_hablado(s, zona, ahora)
     if tipo == "PARTIDO_NUEVO":

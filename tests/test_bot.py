@@ -258,9 +258,49 @@ check("voz inexistente: devuelve None sin romper (el texto igual sale)", t2.sint
 
 print("\n5. Configuración")
 check("sin variables, dice qué falta", len(config.problemas()) == 3, "; ".join(config.problemas()))
-check("por defecto: el partido nuevo va por texto; por voz, una vez, 15 minutos antes",
-      "PARTIDO_NUEVO" in config.TIPOS_TEXTO and "PARTIDO_NUEVO" not in config.TIPOS_VOZ
-      and "RECORDATORIO" in config.TIPOS_VOZ)
+check("por defecto: la ficha por texto y la voz solo 10 minutos antes (nada del barrido)",
+      config.TIPOS_TEXTO == {"REVISION_CUOTA"} and config.TIPOS_VOZ == {"REVISION_VOZ"})
+
+print("\n6. La ficha consolidada del motor de vigilancia")
+from ft_discord.textos import cuota_hablada  # noqa: E402
+check("las cuotas dichas en voz alta", (cuota_hablada(1.95), cuota_hablada(2.05), cuota_hablada(2.0),
+      cuota_hablada(1.5)) == ("uno punto noventa y cinco", "dos punto cero cinco", "dos", "uno punto cinco"))
+_ahora = datetime(2026, 9, 22, 18, 0, tzinfo=timezone.utc)
+rev = {"id": 7, "tipo": "REVISION_CUOTA", "jugador1": "Carlos Ruiz", "jugador2": "Pedro Soto",
+       "torneo": "M25 Sapporo", "fecha_partido": "2026-09-23T15:00:00+00:00", "hora_conocida": 1,
+       "version_regla": "revision_cuota.v1", "datos": {
+           "eventos": [{"tipo": "MTO_GANO", "fecha": "2026-09-21", "rival": "Mario Gil", "score": "6-3 6-4"}],
+           "investigacion": None,
+           "vigilado": {"nombre": "Carlos Ruiz", "cuota": 1.87, "carga": {"partidos": 7, "ventana_dias": 8},
+                        "oposicion": {"percentil": 12}},
+           "rival": {"nombre": "Pedro Soto", "cuota": 1.95, "mercado": 0.49, "ftr": 0.43, "elo": 0.49,
+                     "carga": {"partidos": 3, "ventana_dias": 8}, "oposicion": {"percentil": 91}},
+           "conclusion": {"tipo": "EXPLICADA", "texto": "La cuota de Pedro Soto podría estar incorporando el MTO.",
+                          "voz": "La cuota de Pedro Soto podría estar incorporando el tiempo médico de Carlos Ruiz."}}}
+canal = texto_canal(rev)
+check("el canal muestra el evento, la causa pendiente y la pregunta por la cuota del rival",
+      "REVISIÓN DE CUOTA" in canal and "🩹 Carlos Ruiz pidió MTO el 21/09 y ganó igual (contra Mario Gil, 6-3 6-4)"
+      in canal and "Causa: sin confirmar (investigador pendiente)" in canal
+      and "**¿Por qué Pedro Soto está a 1.95?**" in canal, canal)
+check("...con mercado, FTR, Elo, carga, oposición y la conclusión",
+      "mercado 49%" in canal and "FTR 43%" in canal and "Carga (8 días): Carlos Ruiz 7 · Pedro Soto 3" in canal
+      and "Carlos Ruiz 12 · Pedro Soto 91" in canal and "**Conclusión (explicada):**" in canal, canal)
+voz = texto_voz(rev, "UTC", _ahora)
+check("la voz dice el evento, la cuota del rival y la conclusión, sin 'MTO'",
+      "Revisión de cuota: Carlos Ruiz contra Pedro Soto" in voz and "Carlos Ruiz pidió atención médica ayer "
+      "y ganó igual" in voz and "Pedro Soto paga uno punto noventa y cinco" in voz and "MTO" not in voz, voz)
+aviso = {**rev, "tipo": "REVISION_VOZ", "datos": {**rev["datos"], "minutos": 10, "revision_id": 7}}
+va = texto_voz(aviso, "UTC", _ahora)
+check("el aviso de 10 minutos empieza por lo urgente y sigue con la conclusión",
+      va.startswith("Atención FullTennis. En diez minutos empieza Carlos Ruiz contra Pedro Soto. Carlos Ruiz pidió")
+      and "Pedro Soto paga uno punto noventa y cinco" in va and "podría estar incorporando" in va
+      and "MTO" not in va, va)
+check("a 1 minuto y a 0 se dice distinto",
+      "En un minuto empieza" in texto_voz({**aviso, "datos": {**aviso["datos"], "minutos": 1}}, "UTC", _ahora)
+      and "Está por empezar" in texto_voz({**aviso, "datos": {**aviso["datos"], "minutos": 0}}, "UTC", _ahora))
+rev["datos"]["eventos"] = [{"tipo": "RETIRO", "fecha": "2026-09-12"}]
+check("un retiro se dice 'vuelve tras retirarse'", "vuelve tras retirarse hace diez días"
+      in texto_voz(rev, "UTC", _ahora) and "🔄 Carlos Ruiz vuelve tras retirarse el 12/09" in texto_canal(rev))
 
 print(f"\n{'─' * 60}")
 if _fallos:

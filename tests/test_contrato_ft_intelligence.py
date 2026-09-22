@@ -20,7 +20,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 REPO = os.getenv("FT_INTEL_REPO", "")
-if not REPO or not (Path(REPO) / "ft_intelligence" / "senales.py").exists():
+if not REPO or not (Path(REPO) / "ft_intelligence" / "vigilancia.py").exists():
     print("Saltado: definir FT_INTEL_REPO con una copia de FT_INTELLIGENCE (fase 2).")
     sys.exit(0)
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -34,8 +34,8 @@ from ft_discord.fuente import Fuente  # noqa: E402
 from ft_discord.textos import texto_canal, texto_voz  # noqa: E402
 from ft_intelligence.app import app  # noqa: E402
 from ft_intelligence.db import conectar  # noqa: E402
-from ft_intelligence.identidad import resolver_fixtures_pendientes  # noqa: E402
-from ft_intelligence.senales import evaluar  # noqa: E402
+from ft_intelligence.identidad import resolver_fixtures_pendientes, resolver_mto_pendientes  # noqa: E402
+from ft_intelligence.vigilancia import evaluar  # noqa: E402
 
 ok = fallas = 0
 
@@ -49,18 +49,26 @@ def check(nombre, cond, det=""):
 ahora = datetime.now(timezone.utc).replace(microsecond=0)
 inicio = (ahora + timedelta(hours=5)).replace(minute=30, second=0)
 conn = conectar()
-for pid, n in ((1, "Jugador Uno"), (2, "Jugador Dos")):
+ayer = ahora.date() - timedelta(days=1)
+for pid, n in ((1, "Jugador Uno"), (2, "Jugador Dos"), (3, "Jugador Tres")):
     conn.execute("INSERT INTO players VALUES (?,?,?,?,?)", (pid, n, n.lower(), "M", "x"))
-    conn.execute("INSERT INTO ratings (player_id, superficie, partidos_jugados, sincronizado_en) "
-                 "VALUES (?, 'general', 40, 'x')", (pid,))
-for k in range(1, 9):
-    conn.execute("INSERT INTO ftr_partidos (match_id, player_id, opponent_id, fecha, sincronizado_en) "
-                 "VALUES (?, 1, 2, ?, 'x')", (k, (inicio.date() - timedelta(days=k)).isoformat() + "T10:00:00+00:00"))
+    conn.execute("INSERT INTO ratings (player_id, superficie, rating, partidos_jugados, sincronizado_en) "
+                 "VALUES (?, 'general', 11, 40, 'x')", (pid,))
+# Uno pidió MTO ayer contra Tres, y ganó igual: queda vigilado.
+for mid, a, b, sg, sp in ((1, 1, 3, 2, 1), (2, 3, 1, 1, 2)):
+    conn.execute("INSERT INTO ftr_partidos (match_id, player_id, opponent_id, fecha, score, sets_ganados, "
+                 "sets_perdidos, sincronizado_en) VALUES (?,?,?,?, '6-4 3-6 6-2', ?,?, 'x')",
+                 (mid, a, b, ayer.isoformat() + "T10:00:00+00:00", sg, sp))
+conn.execute("INSERT INTO ftr_mto (id, fecha_partido, home, away, torneo, genero, jugador_mto, creado_en, "
+             "sincronizado_en) VALUES (1, ?, 'Jugador Uno', 'Jugador Tres', 'M25 Test', 'M', 'Jugador Uno', "
+             "?, 'x')", (ayer.isoformat(), ayer.isoformat() + "T11:00:00+00:00"))
+# Su próximo partido, con cuota: se revisa.
 conn.execute("INSERT INTO ftr_fixtures (fixture_id, par_norm, fecha, torneo, genero, jugador1, jugador2, "
              "odd1, odd2, ftr1, ftr2, prob_ftr, prob_elo, favorito_nombre, primer_visto, ultimo_visto) "
              "VALUES (1, 'p', ?, 'M25 Test', 'M', 'Jugador Uno', 'Jugador Dos', 1.6, 2.4, 12, 10, "
              "0.6, 0.58, 'Jugador Uno', 'x', 'x')", (inicio.isoformat(),))
 conn.commit()
+resolver_mto_pendientes(conn)
 resolver_fixtures_pendientes(conn)
 evaluar(conn, ahora)
 
@@ -73,18 +81,23 @@ async def leer():
 
 print("\nContrato FT Discord <-> FT Intelligence (/senales real)")
 ultimo, senales = asyncio.run(leer())
-check("el bot lee las señales reales y el último id", ultimo >= 1 and len(senales) == ultimo)
-s = next(x for x in senales if x["tipo"] == "CARGA_EXTREMA")
+check("el bot lee la revisión real y el último id", ultimo == 1 and len(senales) == 1
+      and senales[0]["tipo"] == "REVISION_CUOTA", str([x["tipo"] for x in senales]))
+s = senales[0]
 canal = texto_canal(s)
-check("texto del canal armado con los datos reales", "CARGA EXTREMA" in canal
-      and "Jugador Uno" in canal and "<t:" in canal, canal.splitlines()[0])
+check("la ficha del canal, armada con los datos reales", "REVISIÓN DE CUOTA" in canal
+      and "¿Por qué Jugador Dos está a 2.4?" in canal and "investigador pendiente" in canal
+      and "<t:" in canal, canal)
 voz = texto_voz(s, "UTC", ahora)
-check("texto de voz armado con los datos reales", voz.startswith("Atención FullTennis. Carga extrema.")
-      and "ocho partidos" in voz, voz)
-n = next(x for x in senales if x["tipo"] == "PARTIDO_NUEVO")
-vn = texto_voz(n, "UTC", ahora)
-check("partido nuevo + hora con los datos reales, FTR y Elo incluidos",
-      vn.startswith("Atención FullTennis. Partido nuevo: Jugador Uno contra Jugador Dos")
-      and "sesenta por ciento" in vn and "cincuenta y ocho por ciento" in vn, vn)
+check("la conclusión por voz, armada con los datos reales",
+      voz.startswith("Atención FullTennis. Revisión de cuota: Jugador Uno contra Jugador Dos")
+      and "pidió atención médica ayer y ganó igual" in voz and "Jugador Dos paga dos punto cuatro" in voz
+      and "MTO" not in voz, voz)
+evaluar(conn, inicio - timedelta(minutes=9))
+_, senales = asyncio.run(leer())
+aviso = [x for x in senales if x["tipo"] == "REVISION_VOZ"]
+va = texto_voz(aviso[0], "UTC", ahora) if aviso else ""
+check("a 9 minutos del partido, el aviso de voz real", len(aviso) == 1
+      and va.startswith("Atención FullTennis. En nueve minutos empieza Jugador Uno contra Jugador Dos"), va)
 print(f"\n{'─' * 60}\n{ok} comprobaciones OK." if not fallas else f"\n{fallas} FALLAS")
 sys.exit(1 if fallas else 0)

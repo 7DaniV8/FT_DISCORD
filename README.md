@@ -17,36 +17,46 @@ frenar la captura de datos de FT Intelligence.
 
 ## Qué anuncia
 
-| Señal | Ejemplo de lo que dice en voz alta |
-|---|---|
-| Partido nuevo + hora | "Atención FullTennis. Partido nuevo: A contra B, hoy a las nueve y treinta de la noche. El FTR da favorito a A con sesenta y ocho por ciento; el Elo, setenta y cuatro por ciento." |
-| Carga extrema | "Atención FullTennis. Carga extrema. Jugador A llega con ocho partidos en los últimos ocho días; Jugador B, con uno. Juegan hoy a las nueve y treinta de la noche." |
-| MTO reciente | "Atención FullTennis. Jugador A pidió atención médica hace dos días. Juega contra Jugador B mañana a las tres en punto de la tarde." |
-| Cuota lejos del FTR | "Atención FullTennis. Cuota fuera de lo normal en A contra B, hoy a las… La casa le da a A sesenta y nueve por ciento; el FTR, ochenta y cinco. Lo explicaría esto: A pidió tiempo médico hace 2 días." |
-| Recordatorio | "Atención FullTennis. Faltan quince minutos para A contra B, a las nueve y treinta de la noche." |
-| Cambio de hora | "Atención FullTennis. Cambio de horario. A contra B ahora se juega hoy a las diez en punto de la noche." |
+Anuncia **una ficha por jugador vigilado**: la revisión de cuota que arma
+el motor de vigilancia de FT Intelligence. Un jugador queda vigilado cuando
+🩹 pidió MTO y ganó igual, o 🔄 se retiró de un partido. Cuando aparece su
+próximo partido con cuota, sale **un solo mensaje**:
 
-Todas son **informativas**: describen el contexto, no recomiendan apostar.
-En el canal de texto la hora aparece como marca de tiempo de Discord, así
-cada persona la ve en su propia zona horaria.
+```
+🧠 📊 FT INTELLIGENCE · REVISIÓN DE CUOTA
+Carlos vs Pedro · M25 Sapporo · (la hora, en la zona de cada uno)
+🩹 Carlos pidió MTO el 21/09 y ganó igual (contra Mario, 6-3 6-4)
+🔎 Causa: sin confirmar (investigador pendiente)
+¿Por qué Pedro está a 1.95?
+Pedro: mercado 49% · FTR 43% · Elo 49%
+Carga (8 días): Carlos 7 · Pedro 3
+Rivales recientes (percentil FTR): Carlos 12 · Pedro 91
+Conclusión (explicada): La cuota de Pedro podría estar incorporando…
+```
 
-**Partido nuevo + hora**, la función original. FullTenis ve unos 194
-partidos por día, así que:
-- **Por voz, cada partido se dice UNA vez: 15 minutos antes** (el
-  recordatorio, con la hora). El aviso de partido nuevo va **por texto**,
-  como calendario. Para decirlo también en voz al detectarlo, agregar
-  `PARTIDO_NUEVO` a `FT_DISCORD_TIPOS_VOZ`.
-- **Las ráfagas se agrupan.** FullTenis publica el calendario en tandas:
-  si en una vuelta llegan 3 o más partidos nuevos, o 3 o más recordatorios
-  a la vez, van en **una** publicación (una lista) y **una** frase
-  ("Siete partidos nuevos en el calendario. El primero: …").
-- Qué niveles se anuncian lo decide FT Intelligence
-  (`FT_INTEL_PARTIDO_NUEVO_NIVELES`). Por defecto, solo los partidos con
-  hora conocida.
+Y **por voz, una sola vez, 10 minutos antes del partido**: "Atención
+FullTennis. En diez minutos empieza Carlos contra Pedro. Carlos pidió
+atención médica ayer y ganó igual. Pedro paga uno punto noventa y cinco. La cuota de Pedro
+podría estar incorporando el tiempo médico de Carlos, la mayor carga de
+Carlos y que el Elo ve el partido como el mercado."
 
-Si el Elo no está de acuerdo con el FTR sobre quién es favorito, la voz lo
-dice ("el Elo prefiere al rival, con…") en vez de leer un porcentaje que
-confundiría.
+La conclusión puede ser **en línea** (la cuota coincide con el FTR),
+**explicada** o **sin explicación suficiente**, y las tres se anuncian:
+que los datos no expliquen la cuota también es información.
+
+Todo es **informativo**: describe el contexto, no recomienda apostar. En el
+canal de texto la hora aparece como marca de tiempo de Discord, así cada
+persona la ve en su propia zona horaria.
+
+La ficha se escribe apenas está lista; la voz espera a los 10 minutos
+previos (lo decide FT Intelligence con la hora vigente del partido). Un
+partido sin hora confirmada queda solo con la ficha escrita.
+
+**Variables de tipos.** Por defecto `FT_DISCORD_TIPOS_TEXTO` vale
+`REVISION_CUOTA` (la ficha) y `FT_DISCORD_TIPOS_VOZ` vale `REVISION_VOZ`
+(el aviso de 10 minutos). Si en Railway quedó cargada
+otra lista de una versión anterior (por ejemplo `MTO_RECIENTE`), **hay que
+borrarla**: pisaría el valor por defecto y el bot no diría las revisiones.
 
 Reglas para no saturar:
 - Cada señal se anuncia **una sola vez**. FT Intelligence no repite señales y el bot no relee lo ya anunciado.
@@ -157,13 +167,14 @@ caso exacto.
 Después de la prueba, dejarlo 24 horas **sin tocar reglas**. Los números:
 - **El bot:** cada hora deja en el log una línea
   `RESUMEN última hora: textos … · voz … · agrupadas … · voz omitida … · atrasadas … · errores … | desde el arranque: … | reconexiones de voz: …`.
-- **FT Intelligence:** `python scripts/revisar.py` muestra las señales por
-  tipo de las últimas 24 horas.
+- **FT Intelligence:** `python scripts/revisar.py` muestra, en "MOTOR DE
+  VIGILANCIA", cuántos MTO y retiros dispararon o se descartaron (y por
+  qué), cuántos jugadores están vigilados y las revisiones por conclusión.
 
 Con eso se decide, con datos:
-- qué niveles anunciar (`FT_INTEL_PARTIDO_NUEVO_NIVELES`);
-- qué tipos van por voz (`FT_DISCORD_TIPOS_VOZ`);
-- desde cuántos se agrupa (`FT_DISCORD_UMBRAL_AGRUPAR`);
+- los umbrales de la conclusión (`FT_INTEL_REVISION_EN_LINEA_PP`,
+  `FT_INTEL_REVISION_GRANDE_PP`, en FT Intelligence);
+- si todas las conclusiones van por voz o solo algunas;
 - si hacen falta horas de silencio.
 
 ## 6. Verificar
