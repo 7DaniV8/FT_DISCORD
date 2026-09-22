@@ -208,6 +208,7 @@ def texto_revision(s: dict, titulo: Optional[str] = None) -> str:
     for otro in d.get("tambien_vigilados") or []:
         lineas += ["👀 También vigilado: " + linea.split(" ", 1)[1]
                    for linea in _lineas_evento(otro.get("nombre", "?"), otro.get("eventos") or [])]
+    lineas += _linea_seguimiento(d)
     concl = d.get("conclusion") or {}
     etiqueta = {"EN_LINEA": "cuota en línea", "EXPLICADA": "explicada",
                 "SIN_EXPLICACION": "sin explicación suficiente"}.get(concl.get("tipo"), "")
@@ -253,6 +254,12 @@ def _es_candidato(d: dict) -> bool:
     return (d.get("decision") or {}).get("clasificacion") == "CANDIDATO"
 
 
+def _linea_seguimiento(d: dict) -> list:
+    """Qué hizo el jugador después del evento, según nuestros propios datos."""
+    frase = (d.get("seguimiento") or {}).get("frase")
+    return [f"🔄 Posterior: {frase}"] if frase else []
+
+
 def texto_candidato(s: dict) -> str:
     """La alerta de un CANDIDATO (la segunda puerta de FT Intelligence): el
     lado con valor, su cuota, mercado contra FTR y Elo, el evento del
@@ -267,6 +274,7 @@ def texto_candidato(s: dict) -> str:
               f"mientras el FTR lo sitúa en {porc(dec.get('ftr'))} (Elo {porc(dec.get('elo'))}).",
               *_lineas_evento(v.get("nombre", "?"), d.get("eventos") or []),
               "🔎 Salud: " + (salud_txt or "sin confirmar (investigador pendiente)"),
+              *_linea_seguimiento(d),
               "A favor: " + "; ".join(p.get("texto", "") for p in dec.get("a_favor") or []) + "."]
     for otro in d.get("tambien_vigilados") or []:
         lineas += ["👀 También vigilado: " + linea.split(" ", 1)[1]
