@@ -346,14 +346,26 @@ radar = {"id": 9, "tipo": "RADAR_VOZ", "jugador1": "J1", "jugador2": "J2",
                    "confianza": {"nivel": "EXPERIMENTAL", "etiqueta": "🔴 EVIDENCIA: EXPERIMENTAL",
                                  "texto": "2 casos comparables cerrados", "rendimiento": "1-1 · +0.5 U",
                                  "aviso": "Regla todavía con muestra pequeña."}}}
+radar["datos"]["decision"] = {"etiqueta": "🔥 VALOR CONFIRMADO"}
+radar["datos"]["diagnostico"] = {
+    "señalado": "J2", "rival": "J1", "precio": {"mercado_pct": 16, "modelos_pct": [70, 73], "anomalia_pp": 54},
+    "salud": {"J1": {"mto_45d": 1}, "J2": {"mto_45d": 0}},
+    "carga": {"J1": {"partidos_7d": 4}, "J2": {"partidos_7d": 1}},
+    "oposicion": {"J1": {"percentil": 40}, "J2": {"percentil": 78}}}
 cr = texto_canal(radar)
-check("el segundo motor muestra sus disparadores, la investigación y la evidencia",
-      "FT MARKET ANOMALY · CANDIDATO" in cr and "🩹 el rival viene" in cr and "🎾 viene enfrentando" in cr
-      and "sin explicación pública" in cr and "🔴 EVIDENCIA: EXPERIMENTAL" in cr, cr[:200])
-check("y no recomienda apostar", "apostar" not in cr.lower() and "no es una recomendación" in cr)
-check("la voz del segundo motor dice por qué mirarlo",
-      "Partido para mirar" in texto_voz(radar, "UTC", _ahora)
-      and "Evidencia todavía escasa" in texto_voz(radar, "UTC", _ahora))
+check("la señal se entiende en diez segundos: jugador, cuota, nuestros números y el mercado",
+      "FULLTENIS · VALOR DETECTADO" in cr and "J2 @2.45" in cr and "~70 %" in cr and "Mercado: 16 %" in cr,
+      cr[:200])
+check("y dice en una línea cada área, con ⚠️ cuando algo va en contra",
+      "⚡ Carga: J1 llega con 3 partidos más" in cr and "🎾 Oposición: viene enfrentando mejores rivales" in cr
+      and "🩹 Salud: J1 viene de un problema físico reciente" in cr
+      and "🌐 Investigación: no encontramos información pública" in cr, cr)
+check("cierra con el veredicto, la evidencia y la aclaración",
+      "🔥 VALOR CONFIRMADO POR FULLTENIS" in cr and "🔴 EVIDENCIA: EXPERIMENTAL" in cr
+      and "no recomendación de apuesta" in cr)
+check("la voz dice el jugador, la cuota y las dos cifras",
+      "Valor detectado: J2" in texto_voz(radar, "UTC", _ahora)
+      and "70 por ciento" in texto_voz(radar, "UTC", _ahora))
 vc = texto_voz(cand, "UTC", _ahora)
 check("CANDIDATO por voz: lo urgente, la cuota, mercado contra FTR y los apoyos",
       vc.startswith("Atención FullTennis. En diez minutos empieza Carlos Ruiz contra Pedro Soto. "

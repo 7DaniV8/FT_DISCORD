@@ -342,73 +342,75 @@ _EXPLICACION = {"SIN_EXPLICACION_DOCUMENTADA": "sin explicación pública que ju
                 "EXPLICACION_ENCONTRADA": "el precio tiene explicación"}
 
 
-def _carga_de(c: dict) -> str:
-    """'4 partidos en 7 días · 1 día de descanso · 2 seguidos · 3h 10m'. Lo
-    que no tenemos no se inventa ni se cuenta como descanso."""
-    p = []
-    if c.get("partidos_7d") is not None:
-        p.append(f"{c['partidos_7d']} part. en 7d")
-    if c.get("partidos_3d"):
-        p.append(f"{c['partidos_3d']} en 3d")
-    if c.get("dias_descanso") is not None:
-        p.append(f"{c['dias_descanso']:g}d de descanso")
-    if (c.get("dias_seguidos") or 0) > 1:
-        p.append(f"{c['dias_seguidos']} días seguidos")
-    if c.get("minutos_ultimos"):
-        p.append(f"{c['minutos_ultimos'] // 60}h {c['minutos_ultimos'] % 60:02d}m en cancha")
-    if c.get("habitual_semana") is not None:
-        p.append(f"lo habitual en él: {c['habitual_semana']}/semana")
-    return " · ".join(p) or "sin datos"
+def _frase_carga(g: dict) -> str:
+    """Una línea: cómo llegan los dos de partidos y descanso."""
+    cg, s, r = g.get("carga") or {}, g.get("señalado"), g.get("rival")
+    a, b = (cg.get(s) or {}), (cg.get(r) or {})
+    if a.get("partidos_7d") is None or b.get("partidos_7d") is None:
+        return "⚡ Carga: sin datos suficientes"
+    d = a["partidos_7d"] - b["partidos_7d"]
+    if d >= 2:
+        return f"⚡ Carga: llega con {d} partidos más en 7 días ⚠️"
+    if d <= -2:
+        return f"⚡ Carga: {r} llega con {-d} partidos más en 7 días"
+    return "⚡ Carga: sin desventaja relevante"
 
 
-def _salud_de(s: dict) -> str:
-    p = []
-    if s.get("mto_45d"):
-        p.append(f"{s['mto_45d']} tiempo(s) médico(s), el último {s.get('ultimo_mto')}")
-    if s.get("retiros_45d"):
-        p.append(f"{s['retiros_45d']} retiro(s), el último {s.get('ultimo_retiro')}")
-    return " · ".join(p) or "sin señal en 45 días"
+def _frase_oposicion(g: dict) -> str:
+    op, s, r = g.get("oposicion") or {}, g.get("señalado"), g.get("rival")
+    a, b = (op.get(s) or {}).get("percentil"), (op.get(r) or {}).get("percentil")
+    if a is None or b is None:
+        return "🎾 Oposición: sin datos suficientes"
+    if a - b >= 15:
+        return "🎾 Oposición: viene enfrentando mejores rivales"
+    if b - a >= 15:
+        return f"🎾 Oposición: {r} viene enfrentando mejores rivales ⚠️"
+    return "🎾 Oposición: parecida en los dos"
 
 
-def _lineas_diagnostico(d: dict) -> list:
-    """Las tres áreas, siempre y para los dos jugadores: el disparador dice
-    qué partido se mira, no qué se analiza."""
-    g = d.get("diagnostico") or {}
-    if not g:
-        return []
-    pr = g.get("precio") or {}
-    lineas = ["", "📊 **Precio**",
-              f"mercado {pr.get('mercado_pct')} % · modelos {', '.join(str(x) + ' %' for x in pr.get('modelos_pct') or [])}"
-              + (f" · anomalía {pr['anomalia_pp']:+} pp" if pr.get("anomalia_pp") is not None else ""),
-              "", "🩹 **Salud**"]
-    lineas += [f"{n}: {_salud_de(v)}" for n, v in (g.get("salud") or {}).items()]
-    lineas += ["", "⚡ **Carga**"]
-    lineas += [f"{n}: {_carga_de(v)}" for n, v in (g.get("carga") or {}).items()]
-    lineas += ["", "🎾 **Oposición**"]
-    lineas += [f"{n}: percentil {v.get('percentil') if v.get('percentil') is not None else 's/d'}"
-               for n, v in (g.get("oposicion") or {}).items()]
-    return lineas
+def _frase_salud(g: dict) -> str:
+    sal, s, r = g.get("salud") or {}, g.get("señalado"), g.get("rival")
+    a, b = (sal.get(s) or {}), (sal.get(r) or {})
+    if a.get("mto_45d") or a.get("retiros_45d"):
+        return "🩹 Salud: viene de un problema físico reciente ⚠️"
+    if b.get("mto_45d") or b.get("retiros_45d"):
+        return f"🩹 Salud: {r} viene de un problema físico reciente"
+    return "🩹 Salud: sin problemas recientes detectados"
+
+
+_FRASE_INV = {"SIN_EXPLICACION_DOCUMENTADA": "🌐 Investigación: no encontramos información pública que "
+                                             "explique esa cuota",
+              "EXPLICACION_PARCIAL": "🌐 Investigación: hay algo, pero no explica del todo la cuota",
+              "EXPLICACION_ENCONTRADA": "🌐 Investigación: encontramos una explicación"}
 
 
 def texto_radar(s: dict) -> str:
-    """El candidato del segundo motor: por qué lo miramos, qué encontró la
-    investigación y con cuánta evidencia hablamos. Nunca dice 'apostar'."""
+    """La señal del segundo motor, entendible en diez segundos: qué jugador,
+    qué cuota, qué vimos, qué había en contra y por qué pasó el filtro. Si
+    llegó acá es porque ya pasó todos los filtros internos."""
     d = s.get("datos") or {}
-    inv = d.get("investigacion") or {}
-    lineas = ["🔥 **FT MARKET ANOMALY · CANDIDATO**", "",
+    g, inv, dec = (d.get("diagnostico") or {}), (d.get("investigacion") or {}), (d.get("decision") or {})
+    pr = g.get("precio") or {}
+    modelos = pr.get("modelos_pct") or []
+    lineas = ["🔥 **FULLTENIS · VALOR DETECTADO**", "",
               f"🎾 {s.get('jugador1')} vs {s.get('jugador2')}",
-              f"💰 {d.get('jugador')} @{d.get('cuota')}", "", "**Disparadores**"]
-    lineas += [_PUERTAS.get(x, x) for x in (d.get("triggers") or [])]
-    if d.get("refuerzos"):
-        lineas.append("También: " + " · ".join(d["refuerzos"]))
-    lineas += _lineas_diagnostico(d)
-    lineas += ["", "🔎 **Investigación pública**",
-               _EXPLICACION.get(inv.get("estado"), "sin investigar")
-               + (f" · {inv['resumen']}" if inv.get("resumen") else "")]
-    if (d.get("diagnostico") or {}).get("conclusion"):
-        lineas += ["", f"🧭 **Conclusión**: {d['diagnostico']['conclusion']}"]
-    lineas += _linea_confianza(d)
-    lineas.append(f"_Partido señalado para mirar, no es una recomendación · señal #{s['id']}_")
+              f"💰 **{d.get('jugador')} @{d.get('cuota')}**", ""]
+    if modelos:
+        lineas.append(f"📊 Nuestros números: ~{min(modelos)} %")
+    if pr.get("mercado_pct") is not None:
+        lineas.append(f"🏦 Mercado: {pr['mercado_pct']} %")
+    if pr.get("anomalia_pp") is not None:
+        lineas += ["", "🔎 **¿Por qué nos gusta?**",
+                   f"Hay {pr['anomalia_pp']} puntos de diferencia entre el nivel que muestran nuestros "
+                   f"modelos y el precio del mercado."]
+    lineas += ["", _frase_carga(g), _frase_oposicion(g), _frase_salud(g),
+               _FRASE_INV.get(inv.get("estado"), "🌐 Investigación: sin datos"), ""]
+    lineas.append(f"{dec.get('etiqueta') or '🔥 VALOR CONFIRMADO'} POR FULLTENIS")
+    c = d.get("confianza") or {}
+    if c.get("etiqueta"):
+        lineas.append(f"{c['etiqueta']} · {c.get('texto', '')}"
+                      + (f" · {c['rendimiento']}" if c.get("rendimiento") else ""))
+    lineas.append(f"_Análisis estadístico, no recomendación de apuesta · señal #{s['id']}_")
     return "\n".join(lineas)
 
 
@@ -465,9 +467,13 @@ def texto_voz(s: dict, zona: str, ahora: Optional[datetime] = None,
         return voz_candidato(s, zona, ahora) if _es_candidato(d) else voz_aviso(s, zona, ahora)
     if tipo == "RADAR_VOZ":
         extra = _VOZ_CONFIANZA.get((d.get("confianza") or {}).get("nivel"), "")
-        return (f"Atención FullTennis. Partido para mirar: {s['jugador1']} contra {s['jugador2']}. "
-                f"{d.get('jugador')} paga {d.get('cuota')}. "
-                f"{_EXPLICACION.get((d.get('investigacion') or {}).get('estado'), 'sin investigar')}."
+        g = d.get("diagnostico") or {}
+        pr = g.get("precio") or {}
+        cifras = (f" Nuestros números lo ven en {min(pr['modelos_pct'])} por ciento y el mercado en "
+                  f"{pr.get('mercado_pct')}." if pr.get("modelos_pct") and pr.get("mercado_pct") is not None
+                  else "")
+        return (f"Atención FullTennis. Valor detectado: {d.get('jugador')}, contra "
+                f"{g.get('rival') or s['jugador2']}, paga {d.get('cuota')}.{cifras}"
                 + (f" {extra}" if extra else ""))
     j1, j2 = s["jugador1"], s["jugador2"]
     cuando = cuando_hablado(s, zona, ahora)
