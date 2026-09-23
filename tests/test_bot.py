@@ -338,6 +338,22 @@ check("con muestra amplia no hay aviso, y se ve el rendimiento igual",
               "aviso": None}}})))
 check("y la voz lo dice en una frase",
       "Evidencia todavía escasa" in texto_voz(cand_conf, "UTC", _ahora))
+radar = {"id": 9, "tipo": "RADAR_VOZ", "jugador1": "J1", "jugador2": "J2",
+         "fecha_partido": "2026-09-23T10:00:00+00:00",
+         "datos": {"jugador": "J2", "cuota": 2.45, "triggers": ["SALUD", "OPOSICION"],
+                   "refuerzos": ["el rival llega con 3 partidos más en 8 días"],
+                   "investigacion": {"estado": "SIN_EXPLICACION_DOCUMENTADA"},
+                   "confianza": {"nivel": "EXPERIMENTAL", "etiqueta": "🔴 EVIDENCIA: EXPERIMENTAL",
+                                 "texto": "2 casos comparables cerrados", "rendimiento": "1-1 · +0.5 U",
+                                 "aviso": "Regla todavía con muestra pequeña."}}}
+cr = texto_canal(radar)
+check("el segundo motor muestra sus disparadores, la investigación y la evidencia",
+      "FT MARKET ANOMALY · CANDIDATO" in cr and "🩹 el rival viene" in cr and "🎾 viene enfrentando" in cr
+      and "sin explicación pública" in cr and "🔴 EVIDENCIA: EXPERIMENTAL" in cr, cr[:200])
+check("y no recomienda apostar", "apostar" not in cr.lower() and "no es una recomendación" in cr)
+check("la voz del segundo motor dice por qué mirarlo",
+      "Partido para mirar" in texto_voz(radar, "UTC", _ahora)
+      and "Evidencia todavía escasa" in texto_voz(radar, "UTC", _ahora))
 vc = texto_voz(cand, "UTC", _ahora)
 check("CANDIDATO por voz: lo urgente, la cuota, mercado contra FTR y los apoyos",
       vc.startswith("Atención FullTennis. En diez minutos empieza Carlos Ruiz contra Pedro Soto. "

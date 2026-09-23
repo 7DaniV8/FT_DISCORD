@@ -18,7 +18,8 @@ from zoneinfo import ZoneInfo
 
 EMOJI = {"REVISION_CUOTA": "📊", "PARTIDO_NUEVO": "🎾", "CARGA_EXTREMA": "🔋", "MTO_RECIENTE": "🩹", "CUOTA_LEJOS": "📊",
          "RECORDATORIO": "⏳", "CAMBIO_HORA": "🕐"}
-TITULO = {"REVISION_CUOTA": "REVISIÓN DE CUOTA", "REVISION_VOZ": "AVISO DE VOZ", "PARTIDO_NUEVO": "NUEVO PARTIDO", "CARGA_EXTREMA": "CARGA EXTREMA", "MTO_RECIENTE": "MTO RECIENTE",
+TITULO = {"REVISION_CUOTA": "REVISIÓN DE CUOTA", "REVISION_VOZ": "AVISO DE VOZ",
+          "RADAR_VOZ": "FT MARKET ANOMALY", "PARTIDO_NUEVO": "NUEVO PARTIDO", "CARGA_EXTREMA": "CARGA EXTREMA", "MTO_RECIENTE": "MTO RECIENTE",
           "CUOTA_LEJOS": "CUOTA LEJOS DEL FTR", "RECORDATORIO": "PRÓXIMO PARTIDO",
           "CAMBIO_HORA": "CAMBIO DE HORA"}
 
@@ -333,10 +334,39 @@ def voz_aviso(s: dict, zona: str, ahora: Optional[datetime] = None) -> str:
             + extra).replace("MTO", "tiempo médico")
 
 
+_PUERTAS = {"SALUD": "🩹 el rival viene de un tiempo médico ganado o de un retiro",
+            "OPOSICION": "🎾 viene enfrentando rivales de mayor nivel",
+            "PRECIO_FTR_ELO": "📊 FTR y Elo lo ven por debajo de 1.80"}
+_EXPLICACION = {"SIN_EXPLICACION_DOCUMENTADA": "sin explicación pública que justifique el precio",
+                "EXPLICACION_PARCIAL": "hay una explicación parcial",
+                "EXPLICACION_ENCONTRADA": "el precio tiene explicación"}
+
+
+def texto_radar(s: dict) -> str:
+    """El candidato del segundo motor: por qué lo miramos, qué encontró la
+    investigación y con cuánta evidencia hablamos. Nunca dice 'apostar'."""
+    d = s.get("datos") or {}
+    inv = d.get("investigacion") or {}
+    lineas = ["🔥 **FT MARKET ANOMALY · CANDIDATO**", "",
+              f"🎾 {s.get('jugador1')} vs {s.get('jugador2')}",
+              f"💰 {d.get('jugador')} @{d.get('cuota')}", "", "**Disparadores**"]
+    lineas += [_PUERTAS.get(x, x) for x in (d.get("triggers") or [])]
+    if d.get("refuerzos"):
+        lineas.append("También: " + " · ".join(d["refuerzos"]))
+    lineas += ["", "🔎 **Investigación**",
+               _EXPLICACION.get(inv.get("estado"), "sin investigar")
+               + (f" · {inv['resumen']}" if inv.get("resumen") else "")]
+    lineas += _linea_confianza(d)
+    lineas.append(f"_Partido señalado para mirar, no es una recomendación · señal #{s['id']}_")
+    return "\n".join(lineas)
+
+
 def texto_canal(s: dict) -> str:
     tipo, d = s["tipo"], s.get("datos") or {}
     if tipo == "REVISION_CUOTA":
         return texto_revision(s)
+    if tipo == "RADAR_VOZ":                      # el segundo motor
+        return texto_radar(s)
     if tipo == "REVISION_VOZ":                   # la alerta, 10 minutos antes (solo CANDIDATO)
         return (texto_candidato(s) if _es_candidato(d)
                 else texto_revision(s, _titulo_alerta(d.get("minutos", 10))))
@@ -382,6 +412,12 @@ def texto_voz(s: dict, zona: str, ahora: Optional[datetime] = None,
         return voz_revision(s, zona, ahora)
     if tipo == "REVISION_VOZ":
         return voz_candidato(s, zona, ahora) if _es_candidato(d) else voz_aviso(s, zona, ahora)
+    if tipo == "RADAR_VOZ":
+        extra = _VOZ_CONFIANZA.get((d.get("confianza") or {}).get("nivel"), "")
+        return (f"Atención FullTennis. Partido para mirar: {s['jugador1']} contra {s['jugador2']}. "
+                f"{d.get('jugador')} paga {d.get('cuota')}. "
+                f"{_EXPLICACION.get((d.get('investigacion') or {}).get('estado'), 'sin investigar')}."
+                + (f" {extra}" if extra else ""))
     j1, j2 = s["jugador1"], s["jugador2"]
     cuando = cuando_hablado(s, zona, ahora)
     if tipo == "PARTIDO_NUEVO":
