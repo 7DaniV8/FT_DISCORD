@@ -342,6 +342,54 @@ _EXPLICACION = {"SIN_EXPLICACION_DOCUMENTADA": "sin explicación pública que ju
                 "EXPLICACION_ENCONTRADA": "el precio tiene explicación"}
 
 
+def _carga_de(c: dict) -> str:
+    """'4 partidos en 7 días · 1 día de descanso · 2 seguidos · 3h 10m'. Lo
+    que no tenemos no se inventa ni se cuenta como descanso."""
+    p = []
+    if c.get("partidos_7d") is not None:
+        p.append(f"{c['partidos_7d']} part. en 7d")
+    if c.get("partidos_3d"):
+        p.append(f"{c['partidos_3d']} en 3d")
+    if c.get("dias_descanso") is not None:
+        p.append(f"{c['dias_descanso']:g}d de descanso")
+    if (c.get("dias_seguidos") or 0) > 1:
+        p.append(f"{c['dias_seguidos']} días seguidos")
+    if c.get("minutos_ultimos"):
+        p.append(f"{c['minutos_ultimos'] // 60}h {c['minutos_ultimos'] % 60:02d}m en cancha")
+    if c.get("habitual_semana") is not None:
+        p.append(f"lo habitual en él: {c['habitual_semana']}/semana")
+    return " · ".join(p) or "sin datos"
+
+
+def _salud_de(s: dict) -> str:
+    p = []
+    if s.get("mto_45d"):
+        p.append(f"{s['mto_45d']} tiempo(s) médico(s), el último {s.get('ultimo_mto')}")
+    if s.get("retiros_45d"):
+        p.append(f"{s['retiros_45d']} retiro(s), el último {s.get('ultimo_retiro')}")
+    return " · ".join(p) or "sin señal en 45 días"
+
+
+def _lineas_diagnostico(d: dict) -> list:
+    """Las tres áreas, siempre y para los dos jugadores: el disparador dice
+    qué partido se mira, no qué se analiza."""
+    g = d.get("diagnostico") or {}
+    if not g:
+        return []
+    pr = g.get("precio") or {}
+    lineas = ["", "📊 **Precio**",
+              f"mercado {pr.get('mercado_pct')} % · modelos {', '.join(str(x) + ' %' for x in pr.get('modelos_pct') or [])}"
+              + (f" · anomalía {pr['anomalia_pp']:+} pp" if pr.get("anomalia_pp") is not None else ""),
+              "", "🩹 **Salud**"]
+    lineas += [f"{n}: {_salud_de(v)}" for n, v in (g.get("salud") or {}).items()]
+    lineas += ["", "⚡ **Carga**"]
+    lineas += [f"{n}: {_carga_de(v)}" for n, v in (g.get("carga") or {}).items()]
+    lineas += ["", "🎾 **Oposición**"]
+    lineas += [f"{n}: percentil {v.get('percentil') if v.get('percentil') is not None else 's/d'}"
+               for n, v in (g.get("oposicion") or {}).items()]
+    return lineas
+
+
 def texto_radar(s: dict) -> str:
     """El candidato del segundo motor: por qué lo miramos, qué encontró la
     investigación y con cuánta evidencia hablamos. Nunca dice 'apostar'."""
@@ -353,9 +401,12 @@ def texto_radar(s: dict) -> str:
     lineas += [_PUERTAS.get(x, x) for x in (d.get("triggers") or [])]
     if d.get("refuerzos"):
         lineas.append("También: " + " · ".join(d["refuerzos"]))
-    lineas += ["", "🔎 **Investigación**",
+    lineas += _lineas_diagnostico(d)
+    lineas += ["", "🔎 **Investigación pública**",
                _EXPLICACION.get(inv.get("estado"), "sin investigar")
                + (f" · {inv['resumen']}" if inv.get("resumen") else "")]
+    if (d.get("diagnostico") or {}).get("conclusion"):
+        lineas += ["", f"🧭 **Conclusión**: {d['diagnostico']['conclusion']}"]
     lineas += _linea_confianza(d)
     lineas.append(f"_Partido señalado para mirar, no es una recomendación · señal #{s['id']}_")
     return "\n".join(lineas)
