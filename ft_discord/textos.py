@@ -19,7 +19,8 @@ from zoneinfo import ZoneInfo
 EMOJI = {"REVISION_CUOTA": "📊", "PARTIDO_NUEVO": "🎾", "CARGA_EXTREMA": "🔋", "MTO_RECIENTE": "🩹", "CUOTA_LEJOS": "📊",
          "RECORDATORIO": "⏳", "CAMBIO_HORA": "🕐"}
 TITULO = {"REVISION_CUOTA": "REVISIÓN DE CUOTA", "REVISION_VOZ": "AVISO DE VOZ",
-          "RADAR_VOZ": "FT MARKET ANOMALY", "PARTIDO_NUEVO": "NUEVO PARTIDO", "CARGA_EXTREMA": "CARGA EXTREMA", "MTO_RECIENTE": "MTO RECIENTE",
+          "RADAR_VOZ": "FT MARKET ANOMALY", "MAESTRO_AVISO": "PARTIDO MAESTRO",
+          "MAESTRO_INICIO": "EMPEZÓ EL MAESTRO", "UNDER_PICK": "UNDER", "PARTIDO_NUEVO": "NUEVO PARTIDO", "CARGA_EXTREMA": "CARGA EXTREMA", "MTO_RECIENTE": "MTO RECIENTE",
           "CUOTA_LEJOS": "CUOTA LEJOS DEL FTR", "RECORDATORIO": "PRÓXIMO PARTIDO",
           "CAMBIO_HORA": "CAMBIO DE HORA"}
 
@@ -420,12 +421,67 @@ def texto_radar(s: dict) -> str:
     return "\n".join(lineas)
 
 
+def _tasa(t: dict) -> str:
+    """'18-6 UNDER (75%) · n=24' y, si la muestra es chica, su ⚠️."""
+    if not t or not t.get("n"):
+        return "sin historial suficiente"
+    return (f"{t['under']}-{t['over']} UNDER ({t['pct']}%) · n={t['n']}"
+            + (" ⚠️ muestra pequeña" if t.get("muestra_chica") else ""))
+
+
+def texto_under(s: dict) -> str:
+    """🎾 El UNDER con su contexto histórico. Todo lo calculó RankingFTR:
+    acá solo se muestra, corto y legible."""
+    d = s.get("datos") or {}
+    c = d.get("contexto") or {}
+    sim, linea, piedra = (c.get("similares") or {}), (c.get("linea") or {}), c.get("piedra")
+    lineas = ["🎾 **FULLTENNIS — UNDER**", "",
+              f"{s.get('jugador1')} vs {s.get('jugador2')}",
+              f"Línea {d.get('linea')} · UNDER @{d.get('cuota')}", "",
+              "📊 **Contexto FT**", f"Similares: {_tasa(sim)}"]
+    if linea.get("n"):
+        lineas.append(f"Línea {linea.get('valor')}: {linea['under']}-{linea['over']} ({linea['pct']}%)")
+    lineas += ["", f"🪨 Piedra histórica: {piedra['condicion']}\n{_tasa(piedra)}" if piedra
+               else "🪨 Sin piedra histórica clara"]
+    if sim.get("pct") is not None:
+        lectura = ("comportamiento histórico favorable" if sim["pct"] >= 65 else
+                   "comportamiento histórico flojo" if sim["pct"] < 55 else
+                   "comportamiento histórico parejo")
+        lineas += ["", f"🧠 Lectura: {lectura}."]
+    return "\n".join(lineas)
+
+
+def texto_maestro(s: dict, zona: str = "UTC") -> str:
+    """⭐ El aviso de un Partido Maestro: quién, contra quién, torneo y hora
+    programada. Sin análisis: es un recordatorio."""
+    d = s.get("datos") or {}
+    top = d.get("es_top")
+    hora = hora_local_hablada(s, zona) if s.get("fecha_partido") and s.get("hora_conocida") else None
+    lineas = [f"{'🔥 **MAESTRO TOP**' if top else '⭐ **PARTIDO MAESTRO**'}", "",
+              f"🎾 {s.get('jugador1')} vs {s.get('jugador2')}"]
+    if d.get("favorito"):
+        lineas.append(f"⭐ {d['favorito']}" + (f" @{d['cuota']}" if d.get("cuota") else ""))
+    if d.get("torneo"):
+        lineas.append(f"🏟️ {d['torneo']}")
+    lineas.append(f"🕐 Partido programado: {hora or 'hora sin confirmar'}")
+    return "\n".join(lineas)
+
+
 def texto_canal(s: dict) -> str:
     tipo, d = s["tipo"], s.get("datos") or {}
     if tipo == "REVISION_CUOTA":
         return texto_revision(s)
     if tipo == "RADAR_VOZ":                      # el segundo motor
         return texto_radar(s)
+    if tipo == "UNDER_PICK":
+        return texto_under(s)
+    if tipo == "MAESTRO_AVISO":
+        from ft_discord.config import ZONA_HORARIA
+        return texto_maestro(s, ZONA_HORARIA)
+    if tipo == "MAESTRO_INICIO":
+        d = s.get("datos") or {}
+        return (f"{'🔥 **EMPEZÓ EL MAESTRO TOP**' if d.get('es_top') else '⭐ **EMPEZÓ EL PARTIDO MAESTRO**'}"
+                f"\n🎾 {s.get('jugador1')} vs {s.get('jugador2')}")
     if tipo == "REVISION_VOZ":                   # la alerta, 10 minutos antes (solo CANDIDATO)
         return (texto_candidato(s) if _es_candidato(d)
                 else texto_revision(s, _titulo_alerta(d.get("minutos", 10))))
@@ -471,6 +527,9 @@ def texto_voz(s: dict, zona: str, ahora: Optional[datetime] = None,
         return voz_revision(s, zona, ahora)
     if tipo == "REVISION_VOZ":
         return voz_candidato(s, zona, ahora) if _es_candidato(d) else voz_aviso(s, zona, ahora)
+    if tipo == "MAESTRO_INICIO":
+        cual = "el Maestro Top" if (d.get("es_top")) else "el Partido Maestro"
+        return f"Atención. Comenzó {cual} de {s['jugador1']} contra {s['jugador2']}."
     if tipo == "RADAR_VOZ":
         extra = _VOZ_CONFIANZA.get((d.get("confianza") or {}).get("nivel"), "")
         g = d.get("diagnostico") or {}

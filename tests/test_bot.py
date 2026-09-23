@@ -346,6 +346,19 @@ radar = {"id": 9, "tipo": "RADAR_VOZ", "jugador1": "J1", "jugador2": "J2",
                    "confianza": {"nivel": "EXPERIMENTAL", "etiqueta": "🔴 EVIDENCIA: EXPERIMENTAL",
                                  "texto": "2 casos comparables cerrados", "rendimiento": "1-1 · +0.5 U",
                                  "aviso": "Regla todavía con muestra pequeña."}}}
+under = {"id": 5, "tipo": "UNDER_PICK", "jugador1": "Player A", "jugador2": "Player B",
+         "datos": {"linea": 18.5, "cuota": 1.78, "contexto": {
+             "similares": {"n": 10, "under": 4, "over": 6, "pct": 40, "muestra_chica": True},
+             "linea": {"valor": 18.5, "n": 0}, "piedra": {"condicion": "cuota UNDER 1.85-1.89",
+                                                          "n": 10, "under": 4, "over": 6, "pct": 40}}}}
+cu = texto_canal(under)
+check("el UNDER muestra su contexto, la muestra chica y la piedra",
+      "FULLTENNIS — UNDER" in cu and "Línea 18.5 · UNDER @1.78" in cu
+      and "4-6 UNDER (40%) · n=10 ⚠️ muestra pequeña" in cu
+      and "🪨 Piedra histórica: cuota UNDER 1.85-1.89" in cu, cu)
+check("y sin historial no inventa porcentajes",
+      "sin historial suficiente" in texto_canal({**under, "datos": {"linea": 18.5, "cuota": 1.78,
+                                                                    "contexto": {}}}))
 radar["datos"]["decision"] = {"etiqueta": "🔥 VALOR CONFIRMADO"}
 radar["datos"]["diagnostico"] = {
     "señalado": "J2", "rival": "J1", "precio": {"mercado_pct": 16, "modelos_pct": [70, 73], "anomalia_pp": 54},
