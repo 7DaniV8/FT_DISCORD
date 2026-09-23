@@ -336,7 +336,8 @@ def voz_aviso(s: dict, zona: str, ahora: Optional[datetime] = None) -> str:
 
 _PUERTAS = {"SALUD": "🩹 el rival viene de un tiempo médico ganado o de un retiro",
             "OPOSICION": "🎾 viene enfrentando rivales de mayor nivel",
-            "PRECIO_FTR_ELO": "📊 FTR y Elo lo ven por debajo de 1.80"}
+            "PRECIO_FTR_ELO": "📊 FTR y Elo lo ven por debajo de 1.80",
+            "CARGA_EXTREMA": "⚡ el rival llega con una carga anormal para él"}
 _EXPLICACION = {"SIN_EXPLICACION_DOCUMENTADA": "sin explicación pública que justifique el precio",
                 "EXPLICACION_PARCIAL": "hay una explicación parcial",
                 "EXPLICACION_ENCONTRADA": "el precio tiene explicación"}
@@ -397,12 +398,17 @@ def texto_radar(s: dict) -> str:
               f"💰 **{d.get('jugador')} @{d.get('cuota')}**", ""]
     if modelos:
         lineas.append(f"📊 Nuestros números: ~{min(modelos)} %")
+    elif (g.get("estimacion") or {}).get("probabilidad_pct"):
+        lineas.append(f"📊 Nuestros números: ~{g['estimacion']['probabilidad_pct']} %")
     if pr.get("mercado_pct") is not None:
         lineas.append(f"🏦 Mercado: {pr['mercado_pct']} %")
     if pr.get("anomalia_pp") is not None:
         lineas += ["", "🔎 **¿Por qué nos gusta?**",
-                   f"Hay {pr['anomalia_pp']} puntos de diferencia entre el nivel que muestran nuestros "
-                   f"modelos y el precio del mercado."]
+                   f"Hay {pr['anomalia_pp']} puntos de diferencia entre la probabilidad que le estimamos "
+                   f"y la que paga el mercado."]
+    abrio = g.get("abrio_la_puerta")
+    if abrio and abrio != d.get("jugador"):
+        lineas.append(f"(el partido entró por {abrio}, pero el valor quedó del otro lado)")
     lineas += ["", _frase_carga(g), _frase_oposicion(g), _frase_salud(g),
                _FRASE_INV.get(inv.get("estado"), "🌐 Investigación: sin datos"), ""]
     lineas.append(f"{dec.get('etiqueta') or '🔥 VALOR CONFIRMADO'} POR FULLTENIS")
