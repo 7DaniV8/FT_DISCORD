@@ -29,6 +29,13 @@ v2 = texto_voz(s2, "UTC")
 check("con cuota: la frase exacta del pedido",
       v2 == "Atención FullTennis. Tiempo médico solicitado por Kovacs. Rival con cuota 2.97.", v2)
 check("el texto también muestra la cuota", "Cuota del rival: **2.97**" in texto_canal(s2))
+s3 = {**s, "datos": {**s2["datos"], "tiene_video": True}}
+v3 = texto_voz(s3, "UTC")
+check("con video lo dice al final",
+      v3 == "Atención FullTennis. Tiempo médico solicitado por Kovacs. Rival con cuota 2.97. "
+            "Partido con video.", v3)
+check("y el texto lo muestra", "📺 **Con video**" in texto_canal(s3))
+check("sin video no dice nada de video", "video" not in v2)
 
 # Velocidad rechazada por la voz (Chirp 3 HD): reintenta sin velocidad.
 import httpx  # noqa: E402

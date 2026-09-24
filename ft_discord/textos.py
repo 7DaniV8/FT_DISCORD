@@ -498,6 +498,8 @@ def texto_mto_vivo(s: dict) -> str:
     texto = f"🩹 **TIEMPO MÉDICO** — solicitado por **{d.get('jugador')}**\n{linea2}"
     if d.get("cuota_rival"):
         texto += f"\n💲 Cuota del rival: **{d['cuota_rival']}**"
+    if d.get("tiene_video"):
+        texto += "\n📺 **Con video**"
     return texto
 
 
@@ -568,6 +570,9 @@ def texto_voz(s: dict, zona: str, ahora: Optional[datetime] = None,
             # 24/09/2026: "Rival con cuota 2.97" (la cuota en vivo del rival
             # al momento del MTO). Si la fuente no la trajo, no se dice.
             frase += f" Rival con cuota {d['cuota_rival']}."
+        if d.get("tiene_video"):
+            # 24/09/2026: el aviso de Telegram trae 📺 = el partido tiene video.
+            frase += " Partido con video."
         return frase
     if tipo == "REVISION_CUOTA":
         return voz_revision(s, zona, ahora)
