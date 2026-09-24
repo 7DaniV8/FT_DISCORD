@@ -258,8 +258,9 @@ check("voz inexistente: devuelve None sin romper (el texto igual sale)", t2.sint
 
 print("\n5. Configuración")
 check("sin variables, dice qué falta", len(config.problemas()) == 3, "; ".join(config.problemas()))
-check("por defecto: solo se alerta 10 minutos antes, por texto y por voz (nada del barrido)",
-      config.TIPOS_TEXTO == {"REVISION_VOZ"} and config.TIPOS_VOZ == {"REVISION_VOZ"})
+check("por defecto: alerta de 10 minutos, Ventaja Leve y Pasan Filtro, por texto y voz",
+      config.TIPOS_TEXTO == {"REVISION_VOZ", "VENTAJA_LEVE", "PASAN_FILTRO"}
+      and config.TIPOS_VOZ == {"REVISION_VOZ", "VENTAJA_LEVE", "PASAN_FILTRO"})
 
 print("\n6. La ficha consolidada del motor de vigilancia")
 from ft_discord.textos import cuota_hablada  # noqa: E402
@@ -351,6 +352,24 @@ under = {"id": 5, "tipo": "UNDER_PICK", "jugador1": "Player A", "jugador2": "Pla
              "similares": {"n": 10, "under": 4, "over": 6, "pct": 40, "muestra_chica": True},
              "linea": {"valor": 18.5, "n": 0}, "piedra": {"condicion": "cuota UNDER 1.85-1.89",
                                                           "n": 10, "under": 4, "over": 6, "pct": 40}}}}
+vl = {"id": 11, "tipo": "VENTAJA_LEVE", "jugador1": "Jugadora A", "jugador2": "Jugadora B",
+      "datos": {"regla": "VL02", "texto_discord":
+                "🔥 VENTAJA LEVE — TENDENCIA UNDER\n🎾 Jugadora A vs Jugadora B\n"
+                "📉 Favorito leve perdió 1.er set: 2-6\n📊 Elo 58% · FTR 61%\n"
+                "📚 Histórico: 79% terminó en 2 sets\n🧪 Muestra: 14 partidos",
+                "texto_voz": "Ventaja Leve. Jugadora A perdió el primer set seis-dos. "
+                             "Tendencia Under. Histórico, setenta y nueve por ciento."}}
+cvl = texto_canal(vl)
+check("Ventaja Leve: el texto de RankingFTR tal cual, con el encabezado en negrita",
+      cvl.startswith("**🔥 VENTAJA LEVE — TENDENCIA UNDER**") and "🧪 Muestra: 14 partidos" in cvl, cvl)
+check("Ventaja Leve: la voz tal cual, corta, sin Elo/FTR/muestra/cuota",
+      texto_voz(vl, "UTC", _ahora) == vl["datos"]["texto_voz"])
+pfs = {"id": 12, "tipo": "PASAN_FILTRO", "jugador1": "A", "jugador2": "B",
+       "datos": {"texto_discord": "🔥 PASAN FILTRO — TENDENCIA OVER\n\n🎾 A vs B",
+                 "texto_voz": "Pasan el filtro. A perdió el primer set seis-tres."}}
+check("Pasan Filtro: mismo tratamiento que Ventaja Leve",
+      texto_canal(pfs).startswith("**🔥 PASAN FILTRO — TENDENCIA OVER**")
+      and texto_voz(pfs, "UTC", _ahora) == pfs["datos"]["texto_voz"])
 cu = texto_canal(under)
 check("el UNDER muestra su contexto, la muestra chica y la piedra",
       "FULLTENNIS — UNDER" in cu and "Línea 18.5 · UNDER @1.78" in cu

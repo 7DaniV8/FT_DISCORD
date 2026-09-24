@@ -20,7 +20,7 @@ EMOJI = {"REVISION_CUOTA": "📊", "PARTIDO_NUEVO": "🎾", "CARGA_EXTREMA": "�
          "RECORDATORIO": "⏳", "CAMBIO_HORA": "🕐"}
 TITULO = {"REVISION_CUOTA": "REVISIÓN DE CUOTA", "REVISION_VOZ": "AVISO DE VOZ",
           "RADAR_VOZ": "FT MARKET ANOMALY", "MAESTRO_AVISO": "PARTIDO MAESTRO",
-          "MAESTRO_INICIO": "EMPEZÓ EL MAESTRO", "UNDER_PICK": "UNDER", "PARTIDO_NUEVO": "NUEVO PARTIDO", "CARGA_EXTREMA": "CARGA EXTREMA", "MTO_RECIENTE": "MTO RECIENTE",
+          "MAESTRO_INICIO": "EMPEZÓ EL MAESTRO", "UNDER_PICK": "UNDER", "VENTAJA_LEVE": "VENTAJA LEVE", "PASAN_FILTRO": "PASAN FILTRO", "PARTIDO_NUEVO": "NUEVO PARTIDO", "CARGA_EXTREMA": "CARGA EXTREMA", "MTO_RECIENTE": "MTO RECIENTE",
           "CUOTA_LEJOS": "CUOTA LEJOS DEL FTR", "RECORDATORIO": "PRÓXIMO PARTIDO",
           "CAMBIO_HORA": "CAMBIO DE HORA"}
 
@@ -467,6 +467,16 @@ def texto_maestro(s: dict, zona: str = "UTC") -> str:
     return "\n".join(lineas)
 
 
+def texto_ventaja_leve(s: dict) -> str:
+    """🎾 Ventaja Leve y 🔥 Pasan Filtro (23/09/2026): el texto lo arma RankingFTR, el mismo que
+    sale por Telegram, con el % y la muestra de LA regla que disparó. Acá
+    solo se pone en negrita el encabezado."""
+    lineas = ((s.get("datos") or {}).get("texto_discord") or s.get("resumen") or "").split("\n")
+    if lineas and lineas[0]:
+        lineas[0] = f"**{lineas[0]}**"
+    return "\n".join(lineas)
+
+
 def texto_canal(s: dict) -> str:
     tipo, d = s["tipo"], s.get("datos") or {}
     if tipo == "REVISION_CUOTA":
@@ -475,6 +485,8 @@ def texto_canal(s: dict) -> str:
         return texto_radar(s)
     if tipo == "UNDER_PICK":
         return texto_under(s)
+    if tipo in ("VENTAJA_LEVE", "PASAN_FILTRO"):
+        return texto_ventaja_leve(s)
     if tipo == "MAESTRO_AVISO":
         from ft_discord.config import ZONA_HORARIA
         return texto_maestro(s, ZONA_HORARIA)
@@ -527,6 +539,12 @@ def texto_voz(s: dict, zona: str, ahora: Optional[datetime] = None,
         return voz_revision(s, zona, ahora)
     if tipo == "REVISION_VOZ":
         return voz_candidato(s, zona, ahora) if _es_candidato(d) else voz_aviso(s, zona, ahora)
+    if tipo in ("VENTAJA_LEVE", "PASAN_FILTRO"):
+        # La frase viene armada de RankingFTR (VL01-VL05, o la regla
+        # automática de Pasan Filtro), SIN el
+        # "Atención FullTennis" del resto: el pedido la quiere corta y
+        # empezando por "Ventaja Leve". No lee Elo, FTR, muestra ni cuota.
+        return (d.get("texto_voz") or "").strip()
     if tipo == "MAESTRO_INICIO":
         cual = "el Maestro Top" if (d.get("es_top")) else "el Partido Maestro"
         return f"Atención. Comenzó {cual} de {s['jugador1']} contra {s['jugador2']}."

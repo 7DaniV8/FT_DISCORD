@@ -70,8 +70,15 @@ vigente del partido. Un partido sin hora confirmada no se alerta (no hay
 cómo saber cuándo faltan 10 minutos); si la hora aparece después, sí. Si
 los dos jugadores están vigilados, es una sola alerta que menciona a ambos.
 
+**🎾 Ventaja Leve (23/09/2026).** Tipo `VENTAJA_LEVE`: solo las reglas
+VL01-VL05 que sonaron en FullTenis. El texto y la frase vienen armados
+desde FullTenis (el mismo % y la misma muestra que Telegram); la voz es
+corta y no lee Elo, FTR, muestra ni cuota. Las Ventaja Leve silenciosas
+nunca llegan al bot. **🔥 Pasan Filtro** (tipo `PASAN_FILTRO`) funciona
+igual: solo cuando hay una regla UNDER/OVER activa.
+
 **Variables de tipos.** Por defecto `FT_DISCORD_TIPOS_TEXTO` y
-`FT_DISCORD_TIPOS_VOZ` valen `REVISION_VOZ` (la alerta de 10 minutos). Si en Railway quedó cargada
+`FT_DISCORD_TIPOS_VOZ` valen `REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO`. Si en Railway quedó cargada
 otra lista de una versión anterior (por ejemplo `MTO_RECIENTE`), **hay que
 borrarla**: pisaría el valor por defecto y el bot no diría las revisiones.
 

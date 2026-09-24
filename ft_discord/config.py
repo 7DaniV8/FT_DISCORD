@@ -14,8 +14,12 @@ import os
 # barrido anterior (PARTIDO_NUEVO, CARGA_EXTREMA, MTO_RECIENTE, CUOTA_LEJOS,
 # RECORDATORIO, CAMBIO_HORA) ya no se generan, pero se siguen sabiendo
 # anunciar si alguien los vuelve a poner en estas variables.
-_TODOS = "REVISION_VOZ"
-_VOZ = "REVISION_VOZ"
+# VENTAJA_LEVE (23/09/2026): solo las reglas VL01-VL05 que sonaron en
+# RankingFTR (las silenciosas nunca llegan acá). Va por texto y por voz.
+# PASAN_FILTRO (23/09/2026): la tendencia UNDER/OVER por sets de Pasan
+# Filtro, solo cuando hay una regla activa. Mismo tratamiento.
+_TODOS = "REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO"
+_VOZ = "REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO"
 
 
 def _lista(nombre: str, defecto: str) -> set:
