@@ -168,9 +168,22 @@ def _sin_repetidos(eventos: list) -> list:
     return salida
 
 
-def _titulo_alerta(minutos: int) -> str:
+def _titulo_alerta(minutos: int, en_vivo: bool = False) -> str:
+    # 24/09/2026: la alerta sale CUANDO EL PARTIDO EMPIEZA (feed en vivo).
+    if en_vivo:
+        return "YA EMPEZÓ"
     return ("ESTÁ POR EMPEZAR" if minutos <= 0 else "EMPIEZA EN 1 MINUTO" if minutos == 1
             else f"EMPIEZA EN {minutos} MINUTOS")
+
+
+def _frase_inicio(d: dict, j1: str, j2: str) -> str:
+    """Primera frase de la voz. En vivo: 'Empezó A contra B.'"""
+    if d.get("en_vivo"):
+        return f"Empezó {j1} contra {j2}."
+    m = d.get("minutos", 10)
+    return (f"Está por empezar {j1} contra {j2}." if m <= 0 else
+            f"En un minuto empieza {j1} contra {j2}." if m == 1 else
+            f"En {numero(m, apocope=True)} minutos empieza {j1} contra {j2}.")
 
 
 def _lineas_evento(nv: str, eventos: list) -> list:
@@ -286,7 +299,7 @@ def texto_candidato(s: dict) -> str:
     dec, v = d.get("decision") or {}, d.get("vigilado") or {}
     inv = d.get("investigacion") or {}
     salud_txt = (inv.get("estado_actual") or {}).get("resumen") or (inv.get("causa") or {}).get("que_paso")
-    lineas = [f"🔥 **FT INTELLIGENCE · CANDIDATO · {_titulo_alerta(d.get('minutos', 10))}**",
+    lineas = [f"🔥 **FT INTELLIGENCE · CANDIDATO · {_titulo_alerta(d.get('minutos', 10), d.get('en_vivo'))}**",
               f"**{s['jugador1']}** vs **{s['jugador2']}** · {s.get('torneo') or ''} · {cuando_texto(s)}",
               f"**{dec.get('jugador')} @{dec.get('cuota')}.** El mercado le asigna {porc(dec.get('mercado'))}, "
               f"mientras el FTR lo sitúa en {porc(dec.get('ftr'))} (Elo {porc(dec.get('elo'))}).",
@@ -306,10 +319,7 @@ def texto_candidato(s: dict) -> str:
 def voz_candidato(s: dict, zona: str, ahora: Optional[datetime] = None) -> str:
     d = s.get("datos") or {}
     dec, v = d.get("decision") or {}, d.get("vigilado") or {}
-    m = d.get("minutos", 10)
-    inicio = (f"Está por empezar {s['jugador1']} contra {s['jugador2']}." if m <= 0 else
-              f"En un minuto empieza {s['jugador1']} contra {s['jugador2']}." if m == 1 else
-              f"En {numero(m, apocope=True)} minutos empieza {s['jugador1']} contra {s['jugador2']}.")
+    inicio = _frase_inicio(d, s["jugador1"], s["jugador2"])
     frases = _frases_evento(d, zona, ahora)
     apoyos = [p.get("corto", "") for p in dec.get("a_favor") or []]
     texto = (f"{inicio} Candidato: {dec.get('jugador')} paga {cuota_hablada(dec.get('cuota'))}. "
@@ -325,11 +335,8 @@ def voz_aviso(s: dict, zona: str, ahora: Optional[datetime] = None) -> str:
     """El aviso de voz, 10 minutos antes: primero lo urgente (quién juega y
     cuándo), después el evento, lo que paga el rival y la conclusión."""
     d = s.get("datos") or {}
-    m = d.get("minutos", 10)
     j1, j2 = s["jugador1"], s["jugador2"]
-    inicio = (f"Está por empezar {j1} contra {j2}." if m <= 0 else
-              f"En un minuto empieza {j1} contra {j2}." if m == 1 else
-              f"En {numero(m, apocope=True)} minutos empieza {j1} contra {j2}.")
+    inicio = _frase_inicio(d, j1, j2)
     otros = [o.get("nombre") for o in d.get("tambien_vigilados") or [] if o.get("nombre")]
     extra = f" También está vigilado {' y '.join(otros)}." if otros else ""
     return ("Atención FullTennis. " + inicio + " " + _voz_cuerpo(d, zona, ahora)
@@ -395,7 +402,7 @@ def texto_radar(s: dict) -> str:
     g, inv, dec = (d.get("diagnostico") or {}), (d.get("investigacion") or {}), (d.get("decision") or {})
     pr = g.get("precio") or {}
     modelos = pr.get("modelos_pct") or []
-    lineas = ["🔥 **FULLTENIS · VALOR DETECTADO**", "",
+    lineas = ["🔥 **FULLTENIS · VALOR DETECTADO**" + (" · ▶️ **YA EMPEZÓ**" if d.get("en_vivo") else ""), "",
               f"🎾 {s.get('jugador1')} vs {s.get('jugador2')}",
               f"💰 **{d.get('jugador')} @{d.get('cuota')}**", ""]
     if modelos:
@@ -524,7 +531,7 @@ def texto_canal(s: dict) -> str:
                 f"\n🎾 {s.get('jugador1')} vs {s.get('jugador2')}")
     if tipo == "REVISION_VOZ":                   # la alerta, 10 minutos antes (solo CANDIDATO)
         return (texto_candidato(s) if _es_candidato(d)
-                else texto_revision(s, _titulo_alerta(d.get("minutos", 10))))
+                else texto_revision(s, _titulo_alerta(d.get("minutos", 10), d.get("en_vivo"))))
     cab = (f"🧠 {EMOJI.get(tipo, '')} **FT INTELLIGENCE · {TITULO.get(tipo, tipo)}**\n"
            f"**{s['jugador1']}** vs **{s['jugador2']}** · {s.get('torneo') or ''} · "
            f"{cuando_texto(s)}")
@@ -594,7 +601,8 @@ def texto_voz(s: dict, zona: str, ahora: Optional[datetime] = None,
         cifras = (f" Nuestros números lo ven en {min(pr['modelos_pct'])} por ciento y el mercado en "
                   f"{pr.get('mercado_pct')}." if pr.get("modelos_pct") and pr.get("mercado_pct") is not None
                   else "")
-        return (f"Atención FullTennis. Valor detectado: {d.get('jugador')}, contra "
+        empezo = f" Empezó {s['jugador1']} contra {s['jugador2']}." if d.get("en_vivo") else ""
+        return (f"Atención FullTennis.{empezo} Valor detectado: {d.get('jugador')}, contra "
                 f"{g.get('rival') or s['jugador2']}, paga {d.get('cuota')}.{cifras}"
                 + (f" {extra}" if extra else ""))
     j1, j2 = s["jugador1"], s["jugador2"]

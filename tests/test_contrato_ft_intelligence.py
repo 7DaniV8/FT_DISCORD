@@ -99,15 +99,25 @@ check("la conclusión por voz, armada con los datos reales",
       voz.startswith("Atención FullTennis. Revisión de cuota: Jugador Uno contra Jugador Dos")
       and "pidió atención médica ayer y ganó igual" in voz and "Jugador Dos paga tres punto ocho" in voz
       and "MTO" not in voz, voz)
+# 24/09/2026: la alerta sale CUANDO EL PARTIDO EMPIEZA (feed en vivo), no 10
+# minutos antes por el reloj.
 evaluar(conn, inicio - timedelta(minutes=9))
+_, senales = asyncio.run(leer())
+check("a 9 minutos, sin estar en vivo, todavía no hay alerta",
+      not [x for x in senales if x["tipo"] == "REVISION_VOZ"])
+conn.execute("INSERT INTO ftr_en_vivo (fid, home, away, inicio, primer_visto_fti, ultimo_visto_fti) "
+             "VALUES ('c1', 'Jugador Uno', 'Jugador Dos', ?, 'x', 'x')",
+             ((inicio + timedelta(minutes=3)).isoformat(),))
+conn.commit()
+evaluar(conn, inicio + timedelta(minutes=4))
 _, senales = asyncio.run(leer())
 aviso = [x for x in senales if x["tipo"] == "REVISION_VOZ"]
 va = texto_voz(aviso[0], "UTC", ahora) if aviso else ""
-check("a 9 minutos del partido, la alerta real del CANDIDATO: voz", len(aviso) == 1
-      and va.startswith("Atención FullTennis. En nueve minutos empieza Jugador Uno contra Jugador Dos. "
+check("al empezar el partido, la alerta real del CANDIDATO: voz", len(aviso) == 1
+      and va.startswith("Atención FullTennis. Empezó Jugador Uno contra Jugador Dos. "
                         "Candidato: Jugador Dos paga tres punto ocho."), va)
 ca = texto_canal(aviso[0]) if aviso else ""
-check("...y por escrito, con las piezas que la respaldan", "CANDIDATO · EMPIEZA EN 9 MINUTOS" in ca
+check("...y por escrito, con las piezas que la respaldan", "CANDIDATO · YA EMPEZÓ" in ca
       and "**Jugador Dos @3.8.**" in ca and "A favor:" in ca and "Jugador Uno llega más cargado" in ca, ca)
 print(f"\n{'─' * 60}\n{ok} comprobaciones OK." if not fallas else f"\n{fallas} FALLAS")
 sys.exit(1 if fallas else 0)
