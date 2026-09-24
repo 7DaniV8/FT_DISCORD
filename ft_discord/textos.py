@@ -495,7 +495,10 @@ def texto_mto_vivo(s: dict) -> str:
     linea2 = f"🎾 {d.get('jugador')}" + (f" vs {rival}" if rival else "")
     if d.get("torneo"):
         linea2 += f" · {d['torneo']}"
-    return f"🩹 **TIEMPO MÉDICO** — solicitado por **{d.get('jugador')}**\n{linea2}"
+    texto = f"🩹 **TIEMPO MÉDICO** — solicitado por **{d.get('jugador')}**\n{linea2}"
+    if d.get("cuota_rival"):
+        texto += f"\n💲 Cuota del rival: **{d['cuota_rival']}**"
+    return texto
 
 
 def texto_canal(s: dict) -> str:
@@ -560,7 +563,12 @@ def texto_voz(s: dict, zona: str, ahora: Optional[datetime] = None,
     tipo, d = s["tipo"], s.get("datos") or {}
     if tipo == "MTO_VIVO":
         # La frase exacta del pedido (24/09/2026).
-        return f"Atención FullTennis. Tiempo médico solicitado por {nombre_para_voz(d.get('jugador'))}."
+        frase = f"Atención FullTennis. Tiempo médico solicitado por {nombre_para_voz(d.get('jugador'))}."
+        if d.get("cuota_rival"):
+            # 24/09/2026: "Rival con cuota 2.97" (la cuota en vivo del rival
+            # al momento del MTO). Si la fuente no la trajo, no se dice.
+            frase += f" Rival con cuota {d['cuota_rival']}."
+        return frase
     if tipo == "REVISION_CUOTA":
         return voz_revision(s, zona, ahora)
     if tipo == "REVISION_VOZ":

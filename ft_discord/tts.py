@@ -31,15 +31,31 @@ class TTSGoogle:
         self._dir = Path(tempfile.mkdtemp(prefix="ftd_tts_"))
         self._n = 0
 
+    def _pedir(self, texto: str, con_velocidad: bool):
+        audio_cfg = {"audioEncoding": "OGG_OPUS"}
+        if con_velocidad:
+            audio_cfg["speakingRate"] = self._velocidad
+        # La clave va en una CABECERA, no en la URL: httpx registra la URL
+        # de cada pedido, y con ?key=... la clave terminaba en el log de
+        # Railway (22/09/2026).
+        return self._http.post(URL_GOOGLE, headers={"X-Goog-Api-Key": self._clave}, json={
+            "input": {"text": texto},
+            "voice": {"languageCode": self._idioma, "name": self._voz},
+            "audioConfig": audio_cfg})
+
     def sintetizar(self, texto: str) -> Optional[Path]:
+        # Velocidad (24/09/2026): la documentación de Google dice que las
+        # voces Chirp 3 HD no aceptan speakingRate, pero la consola las deja
+        # acelerar. Se pide CON velocidad; si Google la rechaza (400), se
+        # repite SIN velocidad y se recuerda, para no fallar cada aviso.
+        con_vel = self._velocidad != 1.0 and not getattr(self, "_sin_velocidad", False)
         try:
-            # La clave va en una CABECERA, no en la URL: httpx registra la URL
-            # de cada pedido, y con ?key=... la clave terminaba en el log de
-            # Railway (22/09/2026).
-            r = self._http.post(URL_GOOGLE, headers={"X-Goog-Api-Key": self._clave}, json={
-                "input": {"text": texto},
-                "voice": {"languageCode": self._idioma, "name": self._voz},
-                "audioConfig": {"audioEncoding": "OGG_OPUS", "speakingRate": self._velocidad}})
+            r = self._pedir(texto, con_vel)
+            if r.status_code == 400 and con_vel:
+                log.warning(f"[FTDiscord] TTS: la voz {self._voz} no aceptó la velocidad "
+                            f"{self._velocidad} ({r.text[:120]}) -- sigo a velocidad normal")
+                self._sin_velocidad = True
+                r = self._pedir(texto, False)
         except httpx.HTTPError as e:
             log.warning(f"[FTDiscord] TTS sin respuesta: {e}")
             return None

@@ -23,7 +23,32 @@ def check(nombre, cond, det=""):
 s = {"tipo": "MTO_VIVO", "id": 1, "jugador1": "Kovacs L", "jugador2": "Sziklai E",
      "datos": {"jugador": "Kovacs L", "rival": "Sziklai E", "torneo": "ITF W35"}}
 v = texto_voz(s, "UTC")
-check("la frase pedida", v == "Atención FullTennis. Tiempo médico solicitado por Kovacs.", v)
+check("la frase pedida (sin cuota)", v == "Atención FullTennis. Tiempo médico solicitado por Kovacs.", v)
+s2 = {**s, "datos": {**s["datos"], "cuota_rival": "2.97"}}
+v2 = texto_voz(s2, "UTC")
+check("con cuota: la frase exacta del pedido",
+      v2 == "Atención FullTennis. Tiempo médico solicitado por Kovacs. Rival con cuota 2.97.", v2)
+check("el texto también muestra la cuota", "Cuota del rival: **2.97**" in texto_canal(s2))
+
+# Velocidad rechazada por la voz (Chirp 3 HD): reintenta sin velocidad.
+import httpx  # noqa: E402
+from ft_discord.tts import TTSGoogle  # noqa: E402
+pedidos = []
+
+
+def google(req):
+    import json as _j
+    cuerpo = _j.loads(req.content)
+    pedidos.append(cuerpo["audioConfig"])
+    if "speakingRate" in cuerpo["audioConfig"]:
+        return httpx.Response(400, json={"error": {"message": "speaking rate not supported"}})
+    return httpx.Response(200, json={"audioContent": "T2dnUw=="})
+
+
+t = TTSGoogle("CLAVE", "es-US", "es-US-Chirp3-HD-Charon", 1.4, transport=httpx.MockTransport(google))
+check("si rechaza la velocidad, igual genera el audio", t.sintetizar("hola") is not None)
+check("y no vuelve a pedir velocidad", t.sintetizar("hola") is not None
+      and "speakingRate" not in pedidos[-1] and len(pedidos) == 3, str(pedidos))
 c = texto_canal(s)
 check("el texto dice quién y contra quién",
       "TIEMPO MÉDICO" in c and "Kovacs L" in c and "Sziklai E" in c, c)
