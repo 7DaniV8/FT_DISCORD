@@ -12,6 +12,7 @@ debería pasar de unos 15 segundos hablada.
 """
 from __future__ import annotations
 
+import json
 import re
 from datetime import date, datetime, timezone
 from typing import Optional
@@ -465,10 +466,12 @@ def texto_maestro(s: dict, zona: str = "UTC") -> str:
     d = s.get("datos") or {}
     top = d.get("es_top")
     hora = hora_local_hablada(s, zona) if s.get("fecha_partido") and s.get("hora_conocida") else None
+    fav = d.get("favorito")
+    marca = lambda n: f"⭐ __**{n}**__" if fav and n == fav else n  # noqa: E731
     lineas = [f"{'🔥 **MAESTRO TOP**' if top else '⭐ **PARTIDO MAESTRO**'}", "",
-              f"🎾 {s.get('jugador1')} vs {s.get('jugador2')}"]
+              f"🎾 {marca(s.get('jugador1'))} vs {marca(s.get('jugador2'))}"]
     if d.get("favorito"):
-        lineas.append(f"⭐ {d['favorito']}" + (f" @{d['cuota']}" if d.get("cuota") else ""))
+        lineas.append(f"⭐ Favorito: __**{d['favorito']}**__" + (f" @{d['cuota']}" if d.get("cuota") else ""))
     if d.get("torneo"):
         lineas.append(f"🏟️ {d['torneo']}")
     lineas.append(f"🕐 Partido programado: {hora or 'hora sin confirmar'}")
@@ -510,7 +513,79 @@ def texto_mto_vivo(s: dict) -> str:
     return texto
 
 
+# ── El favorito, marcado en TODOS los mensajes (24/09/2026) ───────────
+# Pedido: "en los partidos maestros y en general, que nos diga quién es el
+# favorito, que el mensaje lo marque con negrita". Se decide con lo que
+# trae la señal, en este orden:
+#   1. datos.favorito (Maestros, Ventaja Leve, Pasan Filtro)
+#   2. la cuota más baja del partido (foto.fixture odd1/odd2): el favorito
+#      del mercado
+#   3. favorito_nombre del fixture (el favorito del FTR)
+#   4. MTO: la cuota en vivo de quien pidió el MTO contra la del rival
+# Si no se puede saber, el mensaje queda como estaba.
+
+def _num(v):
+    try:
+        n = float(str(v).replace(",", "."))
+        return n if n > 1 else None
+    except (TypeError, ValueError):
+        return None
+
+
+def favorito_de(s: dict) -> Optional[str]:
+    d = s.get("datos") or {}
+    if d.get("favorito"):
+        return d["favorito"]
+    foto = s.get("foto") or {}
+    fx = foto.get("fixture") or foto.get("maestro") or {}
+    j1 = fx.get("jugador1") or s.get("jugador1")
+    j2 = fx.get("jugador2") or s.get("jugador2")
+    o1, o2 = _num(fx.get("odd1")), _num(fx.get("odd2"))
+    if o1 and o2 and o1 != o2 and j1 and j2:
+        return j1 if o1 < o2 else j2
+    if fx.get("favorito_nombre"):
+        return fx["favorito_nombre"]
+    mto = foto.get("mto") or {}
+    if mto:
+        try:
+            p = json.loads(mto.get("payload_json") or "{}")
+        except (TypeError, ValueError):
+            p = {}
+        om, orr = _num(p.get("odds_mto")), _num(p.get("odds_rival"))
+        if om and orr and om != orr and d.get("jugador") and d.get("rival"):
+            return d["jugador"] if om < orr else d["rival"]
+    return None
+
+
+def marcar_favorito(texto: str, fav: Optional[str]) -> str:
+    """En la línea "A vs B": el favorito en __**negrita subrayada**__ con ⭐.
+    Si el mensaje no tiene esa línea (o el favorito no aparece en ella) y
+    no nombra al favorito en ningún lado, se agrega "⭐ Favorito: **X**"."""
+    if not fav or not texto:
+        return texto
+    lineas = texto.split("\n")
+    marcado = f"⭐ __**{fav}**__"
+    ya_marcado = f"__**{fav}**__" in texto
+    for i, ln in enumerate(lineas):
+        if " vs " not in ln or ya_marcado:
+            continue
+        for forma in (f"**{fav}**", fav):
+            if forma in ln:
+                lineas[i] = ln.replace(forma, marcado, 1)
+                ya_marcado = True
+                break
+        if ya_marcado:
+            break
+    if not ya_marcado and "favorito" not in texto.casefold():
+        lineas.insert(1 if len(lineas) > 1 else len(lineas), f"⭐ Favorito: **{fav}**")
+    return "\n".join(lineas)
+
+
 def texto_canal(s: dict) -> str:
+    return marcar_favorito(_texto_canal_base(s), favorito_de(s))
+
+
+def _texto_canal_base(s: dict) -> str:
     tipo, d = s["tipo"], s.get("datos") or {}
     if tipo == "MTO_VIVO":
         return texto_mto_vivo(s)
@@ -593,7 +668,12 @@ def texto_voz(s: dict, zona: str, ahora: Optional[datetime] = None,
         return (d.get("texto_voz") or "").strip()
     if tipo == "MAESTRO_INICIO":
         cual = "el Maestro Top" if (d.get("es_top")) else "el Partido Maestro"
-        return f"Atención. Comenzó {cual} de {s['jugador1']} contra {s['jugador2']}."
+        fav = f" Favorito: {d['favorito']}." if d.get("favorito") else ""
+        return f"Atención. Comenzó {cual} de {s['jugador1']} contra {s['jugador2']}.{fav}"
+    if tipo == "MAESTRO_AVISO":
+        cual = "Maestro Top" if (d.get("es_top")) else "Partido Maestro"
+        fav = f" Favorito: {d['favorito']}." if d.get("favorito") else ""
+        return f"Atención FullTennis. {cual}: {s['jugador1']} contra {s['jugador2']}.{fav}"
     if tipo == "RADAR_VOZ":
         extra = _VOZ_CONFIANZA.get((d.get("confianza") or {}).get("nivel"), "")
         g = d.get("diagnostico") or {}
