@@ -12,6 +12,7 @@ debería pasar de unos 15 segundos hablada.
 """
 from __future__ import annotations
 
+import re
 from datetime import date, datetime, timezone
 from typing import Optional
 from zoneinfo import ZoneInfo
@@ -477,8 +478,30 @@ def texto_ventaja_leve(s: dict) -> str:
     return "\n".join(lineas)
 
 
+_INICIAL_SUELTA = re.compile(r"(\s+[A-Za-zÀ-ÿ]\.?)+$")
+
+
+def nombre_para_voz(nombre: Optional[str]) -> str:
+    """'Kovacs L' se diría 'Kovacs ele': para la voz se quitan las
+    iniciales sueltas del final. Si el nombre es solo eso, se deja igual."""
+    n = (nombre or "").strip()
+    limpio = _INICIAL_SUELTA.sub("", n).strip()
+    return limpio or n
+
+
+def texto_mto_vivo(s: dict) -> str:
+    d = s.get("datos") or {}
+    rival = d.get("rival")
+    linea2 = f"🎾 {d.get('jugador')}" + (f" vs {rival}" if rival else "")
+    if d.get("torneo"):
+        linea2 += f" · {d['torneo']}"
+    return f"🩹 **TIEMPO MÉDICO** — solicitado por **{d.get('jugador')}**\n{linea2}"
+
+
 def texto_canal(s: dict) -> str:
     tipo, d = s["tipo"], s.get("datos") or {}
+    if tipo == "MTO_VIVO":
+        return texto_mto_vivo(s)
     if tipo == "REVISION_CUOTA":
         return texto_revision(s)
     if tipo == "RADAR_VOZ":                      # el segundo motor
@@ -535,6 +558,9 @@ def porc(p: Optional[float]) -> str:
 def texto_voz(s: dict, zona: str, ahora: Optional[datetime] = None,
               con_probabilidades: bool = True) -> str:
     tipo, d = s["tipo"], s.get("datos") or {}
+    if tipo == "MTO_VIVO":
+        # La frase exacta del pedido (24/09/2026).
+        return f"Atención FullTennis. Tiempo médico solicitado por {nombre_para_voz(d.get('jugador'))}."
     if tipo == "REVISION_CUOTA":
         return voz_revision(s, zona, ahora)
     if tipo == "REVISION_VOZ":

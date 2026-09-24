@@ -258,9 +258,10 @@ check("voz inexistente: devuelve None sin romper (el texto igual sale)", t2.sint
 
 print("\n5. Configuración")
 check("sin variables, dice qué falta", len(config.problemas()) == 3, "; ".join(config.problemas()))
-check("por defecto: alerta de 10 minutos, Ventaja Leve y Pasan Filtro, por texto y voz",
-      config.TIPOS_TEXTO == {"REVISION_VOZ", "VENTAJA_LEVE", "PASAN_FILTRO"}
-      and config.TIPOS_VOZ == {"REVISION_VOZ", "VENTAJA_LEVE", "PASAN_FILTRO"})
+# 24/09/2026: + MTO_VIVO (tiempo médico en vivo, texto y voz).
+check("por defecto: alerta de 10 minutos, Ventaja Leve, Pasan Filtro y MTO en vivo, por texto y voz",
+      config.TIPOS_TEXTO == {"REVISION_VOZ", "VENTAJA_LEVE", "PASAN_FILTRO", "MTO_VIVO"}
+      and config.TIPOS_VOZ == {"REVISION_VOZ", "VENTAJA_LEVE", "PASAN_FILTRO", "MTO_VIVO"})
 
 print("\n6. La ficha consolidada del motor de vigilancia")
 from ft_discord.textos import cuota_hablada  # noqa: E402

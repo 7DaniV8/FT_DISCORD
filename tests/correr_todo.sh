@@ -10,7 +10,7 @@ if [ -z "$PY" ]; then
   if [ -x /opt/venv/bin/python ]; then PY=/opt/venv/bin/python; else PY=python3; fi
 fi
 fallas=0
-for t in tests/test_bot.py tests/test_voz.py tests/test_contrato_ft_intelligence.py; do
+for t in tests/test_bot.py tests/test_voz.py tests/test_mto_vivo.py tests/test_contrato_ft_intelligence.py; do
   echo "=== $t"
   salida=$("$PY" "$t" 2>/tmp/prueba_error.txt)
   codigo=$?

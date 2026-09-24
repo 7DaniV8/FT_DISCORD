@@ -18,8 +18,10 @@ import os
 # RankingFTR (las silenciosas nunca llegan acá). Va por texto y por voz.
 # PASAN_FILTRO (23/09/2026): la tendencia UNDER/OVER por sets de Pasan
 # Filtro, solo cuando hay una regla activa. Mismo tratamiento.
-_TODOS = "REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO"
-_VOZ = "REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO"
+# MTO_VIVO (24/09/2026): "Atención FullTennis. Tiempo médico solicitado
+# por X", apenas llega el MTO. Texto y voz.
+_TODOS = "REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO"
+_VOZ = "REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO"
 
 
 def _lista(nombre: str, defecto: str) -> set:
