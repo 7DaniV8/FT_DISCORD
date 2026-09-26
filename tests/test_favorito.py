@@ -43,6 +43,16 @@ check("por cuota: Hiromi Abe", favorito_de(rad) == "Hiromi Abe")
 t = texto_canal(rad)
 check("radar: marcado en la línea de jugadores", f"🎾 Eri Shimizu vs {M.format('Hiromi Abe')}" in t, t)
 
+check("radar: dice dónde está el valor y que no es el favorito",
+      "💰 Valor en: **Eri Shimizu** @3.29 · no es el favorito del mercado (⭐)" in t, t)
+check("radar: nunca dice 'pick'", "pick" not in t.lower())
+v = texto_voz(rad, "UTC")
+check("voz: valor en X, que no es el favorito",
+      "Valor detectado en Eri Shimizu, que no es el favorito, contra" in v and "pick" not in v.lower(), v)
+rad_fav = {**rad, "datos": {**rad["datos"], "jugador": "Hiromi Abe", "cuota": 1.311}}
+check("si el valor está en el favorito, lo dice",
+      "· es el favorito del mercado" in texto_canal(rad_fav), texto_canal(rad_fav))
+
 print("\n3. MTO: por las cuotas en vivo del aviso")
 mto = {"tipo": "MTO_VIVO", "id": 3, "jugador1": "Kawaguchi N", "jugador2": "Ishii S",
        "foto": {"mto": {"payload_json": json.dumps({"odds_mto": "2.2", "odds_rival": "1.6"})}},

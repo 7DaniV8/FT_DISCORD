@@ -395,6 +395,20 @@ _FRASE_INV = {"SIN_EXPLICACION_DOCUMENTADA": "🌐 Investigación: no encontramo
               "EXPLICACION_ENCONTRADA": "🌐 Investigación: encontramos una explicación"}
 
 
+def _linea_valor(s: dict, d: dict) -> str:
+    """24/09/2026: "¿a quién le tengo que entrar?". La ⭐ marca al favorito
+    del mercado, no la sugerencia; si no es la misma persona, se aclara acá
+    para que no se confundan. Se dice "valor en", nunca "pick": es una
+    sugerencia, no una recomendación."""
+    fav = favorito_de(s)
+    base = f"💰 Valor en: **{d.get('jugador')}** @{d.get('cuota')}"
+    if fav and fav == d.get("jugador"):
+        return base + " · es el favorito del mercado"
+    if fav:
+        return base + " · no es el favorito del mercado (⭐)"
+    return base
+
+
 def texto_radar(s: dict) -> str:
     """La señal del segundo motor, entendible en diez segundos: qué jugador,
     qué cuota, qué vimos, qué había en contra y por qué pasó el filtro. Si
@@ -405,7 +419,7 @@ def texto_radar(s: dict) -> str:
     modelos = pr.get("modelos_pct") or []
     lineas = ["🔥 **FULLTENIS · VALOR DETECTADO**" + (" · ▶️ **YA EMPEZÓ**" if d.get("en_vivo") else ""), "",
               f"🎾 {s.get('jugador1')} vs {s.get('jugador2')}",
-              f"💰 **{d.get('jugador')} @{d.get('cuota')}**", ""]
+              _linea_valor(s, d), ""]
     if modelos:
         lineas.append(f"📊 Nuestros números: ~{min(modelos)} %")
     elif (g.get("estimacion") or {}).get("probabilidad_pct"):
@@ -418,7 +432,8 @@ def texto_radar(s: dict) -> str:
                    f"y la que paga el mercado."]
     abrio = g.get("abrio_la_puerta")
     if abrio and abrio != d.get("jugador"):
-        lineas.append(f"(el partido entró por {abrio}, pero el valor quedó del otro lado)")
+        lineas.append(f"(lo detectamos por un dato de {abrio}, pero la cuota con valor es la de "
+                      f"{d.get('jugador')})")
     lineas += ["", _frase_carga(g), _frase_oposicion(g), _frase_salud(g),
                _FRASE_INV.get(inv.get("estado"), "🌐 Investigación: sin datos"), ""]
     lineas.append(f"{dec.get('etiqueta') or '🔥 VALOR CONFIRMADO'} POR FULLTENIS")
@@ -682,8 +697,15 @@ def texto_voz(s: dict, zona: str, ahora: Optional[datetime] = None,
                   f"{pr.get('mercado_pct')}." if pr.get("modelos_pct") and pr.get("mercado_pct") is not None
                   else "")
         empezo = f" Empezó {s['jugador1']} contra {s['jugador2']}." if d.get("en_vivo") else ""
-        return (f"Atención FullTennis.{empezo} Valor detectado: {d.get('jugador')}, contra "
-                f"{g.get('rival') or s['jugador2']}, paga {d.get('cuota')}.{cifras}"
+        rival = g.get("rival") or s["jugador2"]
+        fav = favorito_de(s)
+        if fav and fav == d.get("jugador"):
+            quien = f"Valor detectado en {d.get('jugador')}, favorito del mercado, contra {rival}."
+        elif fav:
+            quien = f"Valor detectado en {d.get('jugador')}, que no es el favorito, contra {rival}."
+        else:
+            quien = f"Valor detectado en {d.get('jugador')}, contra {rival}."
+        return (f"Atención FullTennis.{empezo} {quien} Paga {d.get('cuota')}.{cifras}"
                 + (f" {extra}" if extra else ""))
     j1, j2 = s["jugador1"], s["jugador2"]
     cuando = cuando_hablado(s, zona, ahora)

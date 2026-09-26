@@ -387,7 +387,8 @@ radar["datos"]["diagnostico"] = {
     "oposicion": {"J1": {"percentil": 40}, "J2": {"percentil": 78}}}
 cr = texto_canal(radar)
 check("la señal se entiende en diez segundos: jugador, cuota, nuestros números y el mercado",
-      "FULLTENIS · VALOR DETECTADO" in cr and "J2 @2.45" in cr and "~70 %" in cr and "Mercado: 16 %" in cr,
+      "FULLTENIS · VALOR DETECTADO" in cr and "Valor en: **J2** @2.45" in cr and "~70 %" in cr
+      and "Mercado: 16 %" in cr,
       cr[:200])
 check("y dice en una línea cada área, con ⚠️ cuando algo va en contra",
       "⚡ Carga: J1 llega con 3 partidos más" in cr and "🎾 Oposición: viene enfrentando mejores rivales" in cr
@@ -397,7 +398,7 @@ check("cierra con el veredicto, la evidencia y la aclaración",
       "🔥 VALOR CONFIRMADO POR FULLTENIS" in cr and "🔴 EVIDENCIA: EXPERIMENTAL" in cr
       and "no recomendación de apuesta" in cr)
 check("la voz dice el jugador, la cuota y las dos cifras",
-      "Valor detectado: J2" in texto_voz(radar, "UTC", _ahora)
+      "Valor detectado en J2" in texto_voz(radar, "UTC", _ahora)
       and "70 por ciento" in texto_voz(radar, "UTC", _ahora))
 vc = texto_voz(cand, "UTC", _ahora)
 check("CANDIDATO por voz: lo urgente, la cuota, mercado contra FTR y los apoyos",
