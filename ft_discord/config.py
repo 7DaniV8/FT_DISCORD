@@ -20,7 +20,9 @@ import os
 # Filtro, solo cuando hay una regla activa. Mismo tratamiento.
 # MTO_VIVO (24/09/2026): "Atención FullTennis. Tiempo médico solicitado
 # por X", apenas llega el MTO. Texto y voz.
-_TODOS = "REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO"
+# APRENDIZAJE (25/09/2026): hitos del aprendizaje del radar. SOLO TEXTO:
+# no va en _VOZ.
+_TODOS = "REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,APRENDIZAJE"
 _VOZ = "REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO"
 
 

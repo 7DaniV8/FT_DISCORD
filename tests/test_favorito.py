@@ -73,6 +73,14 @@ vl_viejo = {**vl, "datos": {"favorito": "Ana Uno",
                             "texto_discord": "🔥 VENTAJA LEVE — TENDENCIA UNDER\n🎾 Ana Uno vs Eva Dos\n📉 x"}}
 check("un aviso viejo (sin marca) también se marca", M.format("Ana Uno") in texto_canal(vl_viejo))
 
+print("\n5. Aprendizaje: solo texto, sin marcas de favorito")
+ap_s = {"tipo": "APRENDIZAJE", "id": 9, "jugador1": None, "jugador2": None, "foto": {},
+        "datos": {"titulo": "🧠 Aprendizaje: nueva versión v20 → v21 aceptada",
+                  "lineas": ["salud: 13.91 % → 14.20 %", "Brier fuera de muestra (24 casos no usados): 0.2342 → 0.2331"]}}
+t = texto_canal(ap_s)
+check("el aviso sale con título y detalle", t.startswith("**🧠 Aprendizaje: nueva versión v20 → v21 aceptada**")
+      and "• salud: 13.91 % → 14.20 %" in t and "no cambia disparadores" in t, t)
+
 print()
 if fallos:
     print(f"FALLARON {len(fallos)}: {fallos}")

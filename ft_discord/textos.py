@@ -600,8 +600,20 @@ def texto_canal(s: dict) -> str:
     return marcar_favorito(_texto_canal_base(s), favorito_de(s))
 
 
+def texto_aprendizaje(s: dict) -> str:
+    """Hitos del aprendizaje del radar (25/09/2026): el "monitor del
+    cerebro" de FT Intelligence. Solo texto, sin voz."""
+    d = s.get("datos") or {}
+    lineas = [f"**{d.get('titulo') or s.get('resumen') or 'Aprendizaje'}**"]
+    lineas += [f"• {x}" for x in (d.get("lineas") or [])]
+    lineas.append(f"_Solo medición: no cambia disparadores ni reglas · señal #{s.get('id')}_")
+    return "\n".join(lineas)
+
+
 def _texto_canal_base(s: dict) -> str:
     tipo, d = s["tipo"], s.get("datos") or {}
+    if tipo == "APRENDIZAJE":
+        return texto_aprendizaje(s)
     if tipo == "MTO_VIVO":
         return texto_mto_vivo(s)
     if tipo == "REVISION_CUOTA":
