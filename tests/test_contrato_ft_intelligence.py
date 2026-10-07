@@ -188,5 +188,36 @@ if _uv is not None:
           len(su) == 1 and texto_canal(su[0]).startswith("**💎 FULLTENIS · UTR VALUE**")
           and texto_voz(su[0], "UTC", ahora) == "Empezó Jugador Tres contra Jugador Uno. UTR Value. Jugador Tres.",
           (texto_canal(su[0]), texto_voz(su[0], "UTC", ahora)) if su else "")
+# 🚨 UTR MARKET ANOMALY (07/10/2026): disparada EN VIVO → sale en el acto.
+try:
+    from ft_intelligence import utr_anomalia as _ua  # noqa: E402
+except ImportError:
+    _ua = None                           # un FT Intelligence anterior
+if _ua is not None:
+    from datetime import datetime as _dt, timezone as _tz  # noqa: E402
+    _act = _dt.now(_tz.utc)
+
+    class _CliUA:
+        def get(self, ruta, params=None, permitir_404=False):
+            if ruta.endswith("/inicios"):
+                return {"inicios": []}
+            return {"utr_anomalia": [{
+                "id": 1, "fixture_id": None, "event_id": 77, "par_norm": "beviz l|biro m",
+                "jugador_a": "Beviz L", "jugador_b": "Biro M", "player_a_id": 8, "player_b_id": 9,
+                "fecha_partido": None, "torneo": "M25 Test", "genero": "M", "delta_utr": 0.31,
+                "cuota_pre_activacion": 2.45, "cuota_activacion": 4.20, "fase_activacion": "vivo",
+                "activacion_en": _act.isoformat(), "motivo": "ENVIADO_DISCORD",
+                "version_motor": "utra-v1-07102026",
+                "texto_discord": "🚨 FULLTENIS · UTR MARKET ANOMALY\n🎾 Biro M vs Beviz L",
+                "texto_voz": "UTR Market Anomaly. Beviz L."}]}
+    _ua.sincronizar(conn, _CliUA())
+    _ua.publicar_en_vivo(conn, _act + timedelta(minutes=1))
+    _, senales = asyncio.run(leer())
+    sa = [x for x in senales if x["tipo"] == "UTR_MARKET_ANOMALY"]
+    check("utr market anomaly: en vivo, el bot la escribe y la dice en el acto",
+          len(sa) == 1 and texto_canal(sa[0]).startswith("**🚨 FULLTENIS · UTR MARKET ANOMALY**")
+          and "🔴 **En vivo**" in texto_canal(sa[0])
+          and texto_voz(sa[0], "UTC", ahora) == "En vivo, Beviz contra Biro. UTR Market Anomaly. Beviz L.",
+          (texto_canal(sa[0]), texto_voz(sa[0], "UTC", ahora)) if sa else "")
 print(f"\n{'─' * 60}\n{ok} comprobaciones OK." if not fallas else f"\n{fallas} FALLAS")
 sys.exit(1 if fallas else 0)

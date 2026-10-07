@@ -22,7 +22,7 @@ EMOJI = {"REVISION_CUOTA": "📊", "PARTIDO_NUEVO": "🎾", "CARGA_EXTREMA": "�
          "RECORDATORIO": "⏳", "CAMBIO_HORA": "🕐"}
 TITULO = {"REVISION_CUOTA": "REVISIÓN DE CUOTA", "REVISION_VOZ": "AVISO DE VOZ",
           "RADAR_VOZ": "FT MARKET ANOMALY", "MAESTRO_AVISO": "PARTIDO MAESTRO",
-          "MAESTRO_INICIO": "EMPEZÓ EL MAESTRO", "UNDER_PICK": "UNDER", "VENTAJA_LEVE": "VENTAJA LEVE", "PASAN_FILTRO": "PASAN FILTRO", "CUOTA_MAL_PUESTA": "CUOTA MAL PUESTA", "UTR_VALUE": "UTR VALUE", "PARTIDO_NUEVO": "NUEVO PARTIDO", "CARGA_EXTREMA": "CARGA EXTREMA", "MTO_RECIENTE": "MTO RECIENTE",
+          "MAESTRO_INICIO": "EMPEZÓ EL MAESTRO", "UNDER_PICK": "UNDER", "VENTAJA_LEVE": "VENTAJA LEVE", "PASAN_FILTRO": "PASAN FILTRO", "CUOTA_MAL_PUESTA": "CUOTA MAL PUESTA", "UTR_VALUE": "UTR VALUE", "UTR_MARKET_ANOMALY": "UTR MARKET ANOMALY", "PARTIDO_NUEVO": "NUEVO PARTIDO", "CARGA_EXTREMA": "CARGA EXTREMA", "MTO_RECIENTE": "MTO RECIENTE",
           "CUOTA_LEJOS": "CUOTA LEJOS DEL FTR", "RECORDATORIO": "PRÓXIMO PARTIDO",
           "CAMBIO_HORA": "CAMBIO DE HORA"}
 
@@ -523,6 +523,26 @@ def texto_al_empezar(s: dict) -> str:
 texto_cuota_mal_puesta = texto_al_empezar     # nombre anterior (07/10/2026)
 
 
+def _es_en_vivo_anomalia(s: dict) -> bool:
+    return ((s.get("datos") or {}).get("fase_activacion") or "").lower() == "vivo"
+
+
+def texto_anomalia(s: dict) -> str:
+    """🚨 UTR MARKET ANOMALY (07/10/2026). Disparada EN VIVO: sale en el acto,
+    con el pie de cuándo se detectó. Disparada pre-partido: como UTR VALUE,
+    al empezar el partido."""
+    if not _es_en_vivo_anomalia(s):
+        return texto_al_empezar(s)
+    d = s.get("datos") or {}
+    pie = "🔴 **En vivo**"
+    try:
+        ts = int(_utc(d.get("activacion_en") or d["detectado_en"]).timestamp())
+        pie += f" · cuota detectada <t:{ts}:R>"
+    except (KeyError, TypeError, ValueError):
+        pass
+    return "\n".join(texto_ventaja_leve(s).split("\n") + ["", pie])
+
+
 _INICIAL_SUELTA = re.compile(r"(\s+[A-Za-zÀ-ÿ]\.?)+$")
 
 
@@ -648,6 +668,8 @@ def _texto_canal_base(s: dict) -> str:
         # 07/10/2026: el texto lo arma RankingFTR; acá, encabezado en negrita
         # y el pie de "empezó el partido".
         return texto_al_empezar(s)
+    if tipo == "UTR_MARKET_ANOMALY":
+        return texto_anomalia(s)
     if tipo == "MAESTRO_AVISO":
         from ft_discord.config import ZONA_HORARIA
         return texto_maestro(s, ZONA_HORARIA)
@@ -717,6 +739,12 @@ def texto_voz(s: dict, zona: str, ahora: Optional[datetime] = None,
         frase = (d.get("texto_voz") or "").strip()
         j1, j2 = nombre_para_voz(s.get("jugador1")), nombre_para_voz(s.get("jugador2"))
         return (f"Empezó {j1} contra {j2}. {frase}" if j1 and j2 else frase).strip()
+    if tipo == "UTR_MARKET_ANOMALY":
+        # 07/10/2026: en vivo suena en el acto; pre-partido, al empezar.
+        frase = (d.get("texto_voz") or "").strip()
+        j1, j2 = nombre_para_voz(s.get("jugador1")), nombre_para_voz(s.get("jugador2"))
+        quien = "En vivo," if _es_en_vivo_anomalia(s) else "Empezó"
+        return (f"{quien} {j1} contra {j2}. {frase}" if j1 and j2 else frase).strip()
     if tipo in ("VENTAJA_LEVE", "PASAN_FILTRO"):
         # La frase viene armada de RankingFTR (VL01-VL05, o la regla
         # automática de Pasan Filtro), SIN el

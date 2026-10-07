@@ -70,6 +70,29 @@ check("voz UTR VALUE: qué empezó + frase tal cual",
       texto_voz(U, "UTC") == "Empezó Alto Uno contra Bajo Dos. UTR Value. Alto Uno. Paga dos punto cero cinco.",
       texto_voz(U, "UTC"))
 
+print("\n5. UTR MARKET ANOMALY: en vivo en el acto; pre al empezar")
+TXA = ("🚨 FULLTENIS · UTR MARKET ANOMALY\n🎾 Biro M vs Beviz L\n⭐ UTR SUPERIOR: Beviz L\n"
+       "📊 UTR: 10.58 vs 10.27\n📈 ΔUTR: +0.31\n💰 Cuota PRE: 2.45\n🚨 Cuota de activación: 4.20\n"
+       "📈 Movimiento: 2.45 → 4.20\n🔴 En vivo\n\n⚠️ JUGADOR UTR SUPERIOR A CUOTA EXTREMA")
+A = {**S, "tipo": "UTR_MARKET_ANOMALY", "jugador1": "Beviz L", "jugador2": "Biro M",
+     "datos": {"nivel": "UTR_MARKET_ANOMALY", "cuota": 4.2, "cuota_pre": 2.45, "fase_activacion": "vivo",
+               "detectado_en": "2026-10-07T17:00:00+00:00", "activacion_en": "2026-10-07T17:00:00+00:00",
+               "texto_discord": TXA, "texto_voz": "UTR Market Anomaly. Beviz L. Paga cuatro punto veinte."}}
+check("UTR_MARKET_ANOMALY en texto y voz por defecto",
+      "UTR_MARKET_ANOMALY" in config.TIPOS_TEXTO and "UTR_MARKET_ANOMALY" in config.TIPOS_VOZ)
+ta = texto_canal(A)
+check("texto en vivo: encabezado en negrita, cuerpo tal cual, pie 'En vivo' (no 'Empezó')",
+      ta.startswith("**🚨 FULLTENIS · UTR MARKET ANOMALY**") and "⚠️ JUGADOR UTR SUPERIOR A CUOTA EXTREMA" in ta
+      and ta.split("\n")[-1].startswith("🔴 **En vivo** · cuota detectada <t:1791392400:R>")
+      and "Empezó el partido" not in ta, ta)
+check("voz en vivo: 'En vivo, Beviz contra Biro.' + frase",
+      texto_voz(A, "UTC") == "En vivo, Beviz contra Biro. UTR Market Anomaly. Beviz L. Paga cuatro punto veinte.",
+      texto_voz(A, "UTC"))
+AP = {**A, "datos": {**A["datos"], "fase_activacion": "pre"}}
+check("pre-partido: pie de 'Empezó el partido' y voz 'Empezó …'",
+      "Empezó el partido" in texto_canal(AP) and texto_voz(AP, "UTC").startswith("Empezó Beviz contra Biro."),
+      texto_canal(AP))
+
 print()
 if fallas:
     print(f"{ok} OK, {fallas} FALLAS")

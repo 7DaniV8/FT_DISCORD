@@ -31,9 +31,13 @@ import os
 # UTR_VALUE (07/10/2026): el motor UTR VALUE de RankingFTR, mismo trato que
 # CUOTA_MAL_PUESTA (texto y voz cuando el partido EMPIEZA). Mismo OJO con las
 # variables de Railway.
+# UTR_MARKET_ANOMALY (07/10/2026): 🚨 UTR MARKET ANOMALY de RankingFTR. Texto
+# y voz: si se disparó EN VIVO, en el acto ("En vivo, A contra B. ..."); si fue
+# pre-partido, cuando el partido EMPIEZA, como UTR VALUE. Mismo OJO con las
+# variables de Railway.
 _TODOS = ("REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,APRENDIZAJE,CUOTA_MAL_PUESTA,"
-          "UTR_VALUE")
-_VOZ = "REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,CUOTA_MAL_PUESTA,UTR_VALUE"
+          "UTR_VALUE,UTR_MARKET_ANOMALY")
+_VOZ = "REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,CUOTA_MAL_PUESTA,UTR_VALUE,UTR_MARKET_ANOMALY"
 
 
 def _lista(nombre: str, defecto: str) -> set:
