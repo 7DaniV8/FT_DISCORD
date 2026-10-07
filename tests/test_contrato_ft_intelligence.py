@@ -158,5 +158,35 @@ if _cmp is not None:
           sc and texto_voz(sc[0], "UTC", ahora) ==
           "Empezó Jugador Tres contra Jugador Dos. Cuota muy mal puesta. Jugador Tres.",
           texto_voz(sc[0], "UTC", ahora) if sc else "")
+# 📈 UTR VALUE (07/10/2026): mismo recorrido, con el módulo real.
+try:
+    from ft_intelligence import utr_value as _uv  # noqa: E402
+except ImportError:
+    _uv = None                           # un FT Intelligence anterior al 07/10/2026
+if _uv is not None:
+    class _CliUV:
+        def get(self, ruta, params=None, permitir_404=False):
+            return {"utr_value": [{
+                "id": 1, "fixture_id": 10, "par_norm": "jugador tres|jugador uno",
+                "jugador_a": "Jugador Tres", "jugador_b": "Jugador Uno", "player_a_id": 3,
+                "player_b_id": 1, "fecha_partido": (ahora + timedelta(hours=4)).isoformat(),
+                "torneo": "M25 Test", "genero": "M", "delta_utr": 0.9, "odds_a_cand": 2.05,
+                "utr_value_pp_cand": 41.0, "motivo": "ENVIADO_DISCORD",
+                "decidido_en": ahora.isoformat(), "version_motor": "utrv-v1-07102026",
+                "texto_discord": "💎 FULLTENIS · UTR VALUE\n🎾 ⭐ __**Jugador Tres**__ vs Jugador Uno",
+                "texto_voz": "UTR Value. Jugador Tres."}]}
+    _uv.sincronizar(conn, _CliUV(), ahora)
+    _ini_uv = ahora + timedelta(hours=4, minutes=1)
+    conn.execute("INSERT INTO ftr_en_vivo (fid, home, away, player_id_home, player_id_away, inicio, "
+                 "primer_visto_fti, ultimo_visto_fti) VALUES ('u3', 'Jugador Uno', 'Jugador Tres', "
+                 "1, 3, ?, 'x', 'x')", (_ini_uv.isoformat(),))
+    conn.commit()
+    _uv.publicar_en_vivo(conn, _ini_uv + timedelta(minutes=2))
+    _, senales = asyncio.run(leer())
+    su = [x for x in senales if x["tipo"] == "UTR_VALUE"]
+    check("utr value: al empezar, el bot lo escribe y lo dice",
+          len(su) == 1 and texto_canal(su[0]).startswith("**💎 FULLTENIS · UTR VALUE**")
+          and texto_voz(su[0], "UTC", ahora) == "Empezó Jugador Tres contra Jugador Uno. UTR Value. Jugador Tres.",
+          (texto_canal(su[0]), texto_voz(su[0], "UTC", ahora)) if su else "")
 print(f"\n{'─' * 60}\n{ok} comprobaciones OK." if not fallas else f"\n{fallas} FALLAS")
 sys.exit(1 if fallas else 0)

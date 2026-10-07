@@ -28,8 +28,12 @@ import os
 # ya avisó al detectarla).
 # OJO: si FT_DISCORD_TIPOS_TEXTO / FT_DISCORD_TIPOS_VOZ están puestas en
 # Railway, mandan ellas y hay que agregarles CUOTA_MAL_PUESTA a mano.
-_TODOS = "REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,APRENDIZAJE,CUOTA_MAL_PUESTA"
-_VOZ = "REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,CUOTA_MAL_PUESTA"
+# UTR_VALUE (07/10/2026): el motor UTR VALUE de RankingFTR, mismo trato que
+# CUOTA_MAL_PUESTA (texto y voz cuando el partido EMPIEZA). Mismo OJO con las
+# variables de Railway.
+_TODOS = ("REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,APRENDIZAJE,CUOTA_MAL_PUESTA,"
+          "UTR_VALUE")
+_VOZ = "REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,CUOTA_MAL_PUESTA,UTR_VALUE"
 
 
 def _lista(nombre: str, defecto: str) -> set:

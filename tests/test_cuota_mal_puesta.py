@@ -57,6 +57,19 @@ check("dice qué empezó y después la frase tal cual",
       texto_voz(S, "America/Bogota") == "Empezó Carlos Uno contra Pedro Dos. " + VOZ,
       texto_voz(S, "America/Bogota"))
 
+print("\n4. UTR VALUE: mismo trato")
+U = {**S, "tipo": "UTR_VALUE", "jugador1": "Alto Uno", "jugador2": "Bajo Dos",
+     "datos": {**S["datos"], "texto_discord": "💎 FULLTENIS · UTR VALUE\n🎾 ⭐ __**Alto Uno**__ vs Bajo Dos",
+               "texto_voz": "UTR Value. Alto Uno. Paga dos punto cero cinco."}}
+check("UTR_VALUE en texto y voz por defecto",
+      "UTR_VALUE" in config.TIPOS_TEXTO and "UTR_VALUE" in config.TIPOS_VOZ)
+tu = texto_canal(U)
+check("texto UTR VALUE: encabezado en negrita + pie de inicio",
+      tu.startswith("**💎 FULLTENIS · UTR VALUE**") and "Empezó el partido" in tu, tu)
+check("voz UTR VALUE: qué empezó + frase tal cual",
+      texto_voz(U, "UTC") == "Empezó Alto Uno contra Bajo Dos. UTR Value. Alto Uno. Paga dos punto cero cinco.",
+      texto_voz(U, "UTC"))
+
 print()
 if fallas:
     print(f"{ok} OK, {fallas} FALLAS")
