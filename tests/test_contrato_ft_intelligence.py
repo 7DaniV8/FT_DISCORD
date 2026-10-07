@@ -119,5 +119,44 @@ check("al empezar el partido, la alerta real del CANDIDATO: voz", len(aviso) == 
 ca = texto_canal(aviso[0]) if aviso else ""
 check("...y por escrito, con las piezas que la respaldan", "CANDIDATO · YA EMPEZÓ" in ca
       and "**Jugador Dos @3.8.**" in ca and "A favor:" in ca and "Jugador Uno llega más cargado" in ca, ca)
+# 🚨 Cuota Mal Puesta (07/10/2026): FT Intelligence la transporta con su
+# código real y el bot la lee por /senales y la dice tal cual.
+try:
+    from ft_intelligence import cuota_mal_puesta as _cmp  # noqa: E402
+except ImportError:
+    _cmp = None                          # un FT Intelligence anterior al 07/10/2026
+if _cmp is not None:
+    class _CliCMP:
+        def get(self, ruta, params=None, permitir_404=False):
+            return {"cuota_mal_puesta": [{
+                "id": 1, "fixture_id": 9, "par_norm": "jugador dos|jugador tres",
+                "player_a": "Jugador Tres", "player_b": "Jugador Dos",
+                "player_a_id": 3, "player_b_id": 2,
+                "fecha_partido": (ahora + timedelta(hours=2)).isoformat(),
+                "torneo": "M25 Test", "genero": "M", "odds_a": 5.0, "mispricing_pp": 21.5,
+                "classification": "MUY", "discord_nivel": "PREMIUM",
+                "timestamp_signal": ahora.isoformat(), "version_motor": "cmp-v1-07102026",
+                "texto_discord": "💎 FULLTENIS · CUOTA MUY MAL PUESTA\n🎾 ⭐ __**Jugador Tres**__ vs Jugador Dos",
+                "texto_voz": "Cuota muy mal puesta. Jugador Tres."}]}
+    _cmp.sincronizar(conn, _CliCMP(), ahora)
+    _cmp.publicar_en_vivo(conn, ahora)
+    _, senales = asyncio.run(leer())
+    check("cuota mal puesta: antes de empezar el partido, Discord no recibe nada",
+          not [x for x in senales if x["tipo"] == "CUOTA_MAL_PUESTA"])
+    _ini_cmp = ahora + timedelta(hours=2, minutes=1)
+    conn.execute("INSERT INTO ftr_en_vivo (fid, home, away, player_id_home, player_id_away, inicio, "
+                 "primer_visto_fti, ultimo_visto_fti) VALUES ('c2', 'Jugador Dos', 'Jugador Tres', "
+                 "2, 3, ?, 'x', 'x')", (_ini_cmp.isoformat(),))
+    conn.commit()
+    _cmp.publicar_en_vivo(conn, _ini_cmp + timedelta(minutes=2))
+    _, senales = asyncio.run(leer())
+    sc = [x for x in senales if x["tipo"] == "CUOTA_MAL_PUESTA"]
+    check("cuota mal puesta: al empezar, el bot la lee y la escribe con el pie de inicio",
+          len(sc) == 1 and texto_canal(sc[0]).startswith("**💎 FULLTENIS · CUOTA MUY MAL PUESTA**")
+          and "Empezó el partido" in texto_canal(sc[0]), texto_canal(sc[0]) if sc else "")
+    check("cuota mal puesta: la voz dice qué empezó y la frase de RankingFTR",
+          sc and texto_voz(sc[0], "UTC", ahora) ==
+          "Empezó Jugador Tres contra Jugador Dos. Cuota muy mal puesta. Jugador Tres.",
+          texto_voz(sc[0], "UTC", ahora) if sc else "")
 print(f"\n{'─' * 60}\n{ok} comprobaciones OK." if not fallas else f"\n{fallas} FALLAS")
 sys.exit(1 if fallas else 0)

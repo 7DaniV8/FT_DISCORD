@@ -22,8 +22,14 @@ import os
 # por X", apenas llega el MTO. Texto y voz.
 # APRENDIZAJE (25/09/2026): hitos del aprendizaje del radar. SOLO TEXTO:
 # no va en _VOZ.
-_TODOS = "REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,APRENDIZAJE"
-_VOZ = "REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO"
+# CUOTA_MAL_PUESTA (07/10/2026): las 🔥/💎 del motor Cuota Mal Puesta V1 de
+# RankingFTR (las 🟡 en estudio nunca llegan). Texto y voz, CUANDO EL
+# PARTIDO EMPIEZA (FT Intelligence la retiene hasta verlo en vivo; Telegram
+# ya avisó al detectarla).
+# OJO: si FT_DISCORD_TIPOS_TEXTO / FT_DISCORD_TIPOS_VOZ están puestas en
+# Railway, mandan ellas y hay que agregarles CUOTA_MAL_PUESTA a mano.
+_TODOS = "REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,APRENDIZAJE,CUOTA_MAL_PUESTA"
+_VOZ = "REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,CUOTA_MAL_PUESTA"
 
 
 def _lista(nombre: str, defecto: str) -> set:

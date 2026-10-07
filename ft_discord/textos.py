@@ -22,7 +22,7 @@ EMOJI = {"REVISION_CUOTA": "📊", "PARTIDO_NUEVO": "🎾", "CARGA_EXTREMA": "�
          "RECORDATORIO": "⏳", "CAMBIO_HORA": "🕐"}
 TITULO = {"REVISION_CUOTA": "REVISIÓN DE CUOTA", "REVISION_VOZ": "AVISO DE VOZ",
           "RADAR_VOZ": "FT MARKET ANOMALY", "MAESTRO_AVISO": "PARTIDO MAESTRO",
-          "MAESTRO_INICIO": "EMPEZÓ EL MAESTRO", "UNDER_PICK": "UNDER", "VENTAJA_LEVE": "VENTAJA LEVE", "PASAN_FILTRO": "PASAN FILTRO", "PARTIDO_NUEVO": "NUEVO PARTIDO", "CARGA_EXTREMA": "CARGA EXTREMA", "MTO_RECIENTE": "MTO RECIENTE",
+          "MAESTRO_INICIO": "EMPEZÓ EL MAESTRO", "UNDER_PICK": "UNDER", "VENTAJA_LEVE": "VENTAJA LEVE", "PASAN_FILTRO": "PASAN FILTRO", "CUOTA_MAL_PUESTA": "CUOTA MAL PUESTA", "PARTIDO_NUEVO": "NUEVO PARTIDO", "CARGA_EXTREMA": "CARGA EXTREMA", "MTO_RECIENTE": "MTO RECIENTE",
           "CUOTA_LEJOS": "CUOTA LEJOS DEL FTR", "RECORDATORIO": "PRÓXIMO PARTIDO",
           "CAMBIO_HORA": "CAMBIO DE HORA"}
 
@@ -503,6 +503,22 @@ def texto_ventaja_leve(s: dict) -> str:
     return "\n".join(lineas)
 
 
+def texto_cuota_mal_puesta(s: dict) -> str:
+    """🚨 Cuota Mal Puesta (07/10/2026). Se anuncia CUANDO EL PARTIDO EMPIEZA
+    (FT Intelligence lo confirma con el feed en vivo); el texto lo arma
+    RankingFTR al detectarla. Por eso, al pie, cuándo se detectó: la cuota
+    y las probabilidades del mensaje son de ESE momento, no de ahora."""
+    d = s.get("datos") or {}
+    lineas = texto_ventaja_leve(s).split("\n")
+    pie = "▶️ **Empezó el partido**"
+    try:
+        ts = int(_utc(d["detectado_en"]).timestamp())
+        pie += f" · señal detectada <t:{ts}:R> (cuota y probabilidades de ese momento)"
+    except (KeyError, TypeError, ValueError):
+        pass
+    return "\n".join(lineas + ["", pie])
+
+
 _INICIAL_SUELTA = re.compile(r"(\s+[A-Za-zÀ-ÿ]\.?)+$")
 
 
@@ -624,6 +640,11 @@ def _texto_canal_base(s: dict) -> str:
         return texto_under(s)
     if tipo in ("VENTAJA_LEVE", "PASAN_FILTRO"):
         return texto_ventaja_leve(s)
+    if tipo == "CUOTA_MAL_PUESTA":
+        # 07/10/2026: el texto lo arma RankingFTR (cuota, mercado, Elo, FTR,
+        # L10, prob. FT, cuota justa, PP); acá, encabezado en negrita y el
+        # pie de "empezó el partido".
+        return texto_cuota_mal_puesta(s)
     if tipo == "MAESTRO_AVISO":
         from ft_discord.config import ZONA_HORARIA
         return texto_maestro(s, ZONA_HORARIA)
@@ -687,6 +708,12 @@ def texto_voz(s: dict, zona: str, ahora: Optional[datetime] = None,
         return voz_revision(s, zona, ahora)
     if tipo == "REVISION_VOZ":
         return voz_candidato(s, zona, ahora) if _es_candidato(d) else voz_aviso(s, zona, ahora)
+    if tipo == "CUOTA_MAL_PUESTA":
+        # 07/10/2026: suena cuando el partido EMPIEZA. Primero qué empezó,
+        # después la frase de RankingFTR tal cual.
+        frase = (d.get("texto_voz") or "").strip()
+        j1, j2 = nombre_para_voz(s.get("jugador1")), nombre_para_voz(s.get("jugador2"))
+        return (f"Empezó {j1} contra {j2}. {frase}" if j1 and j2 else frase).strip()
     if tipo in ("VENTAJA_LEVE", "PASAN_FILTRO"):
         # La frase viene armada de RankingFTR (VL01-VL05, o la regla
         # automática de Pasan Filtro), SIN el
