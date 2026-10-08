@@ -511,10 +511,13 @@ def texto_al_empezar(s: dict) -> str:
     no de ahora."""
     d = s.get("datos") or {}
     lineas = texto_ventaja_leve(s).split("\n")
-    pie = "▶️ **Empezó el partido**"
+    # 08/10/2026 (CUOTA MAL PUESTA V2, Rubén): el mensaje corto termina en
+    # "▶️ EN JUEGO". Para UTR VALUE se mantiene el pie de siempre.
+    pie = "▶️ **EN JUEGO**" if s.get("tipo") == "CUOTA_MAL_PUESTA" else "▶️ **Empezó el partido**"
     try:
         ts = int(_utc(d["detectado_en"]).timestamp())
-        pie += f" · señal detectada <t:{ts}:R> (cuota y probabilidades de ese momento)"
+        pie += f" · señal detectada <t:{ts}:R>" + (
+            "" if s.get("tipo") == "CUOTA_MAL_PUESTA" else " (cuota y probabilidades de ese momento)")
     except (KeyError, TypeError, ValueError):
         pass
     return "\n".join(lineas + ["", pie])

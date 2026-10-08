@@ -49,8 +49,9 @@ print("\n2. Texto")
 t = texto_canal(S)
 check("encabezado en negrita", t.split("\n")[0] == "**💎 FULLTENIS · CUOTA MUY MAL PUESTA**", t)
 check("el cuerpo de RankingFTR tal cual", t.split("\n")[1:len(TXT.split("\n"))] == TXT.split("\n")[1:], t)
-check("pie: empezó el partido + cuándo se detectó (hora de Discord)",
-      t.split("\n")[-1].startswith("▶️ **Empezó el partido** · señal detectada <t:1791392400:R>"), t)
+# V2 (08/10/2026): el mensaje corto de Cuota Mal Puesta termina en "▶️ EN JUEGO".
+check("pie: EN JUEGO + cuándo se detectó (hora de Discord)",
+      t.split("\n")[-1].startswith("▶️ **EN JUEGO** · señal detectada <t:1791392400:R>"), t)
 check("no agrega 'Favorito:'", "Favorito:" not in t)
 print("\n3. Voz")
 check("dice qué empezó y después la frase tal cual",
