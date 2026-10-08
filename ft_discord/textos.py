@@ -19,10 +19,10 @@ from typing import Optional
 from zoneinfo import ZoneInfo
 
 EMOJI = {"REVISION_CUOTA": "📊", "PARTIDO_NUEVO": "🎾", "CARGA_EXTREMA": "🔋", "MTO_RECIENTE": "🩹", "CUOTA_LEJOS": "📊",
-         "RECORDATORIO": "⏳", "CAMBIO_HORA": "🕐"}
+         "RECORDATORIO": "⏳", "CAMBIO_HORA": "🕐", "RECORDADOR": "⏰"}
 TITULO = {"REVISION_CUOTA": "REVISIÓN DE CUOTA", "REVISION_VOZ": "AVISO DE VOZ",
           "RADAR_VOZ": "FT MARKET ANOMALY", "MAESTRO_AVISO": "PARTIDO MAESTRO",
-          "MAESTRO_INICIO": "EMPEZÓ EL MAESTRO", "UNDER_PICK": "UNDER", "VENTAJA_LEVE": "VENTAJA LEVE", "PASAN_FILTRO": "PASAN FILTRO", "CUOTA_MAL_PUESTA": "CUOTA MAL PUESTA", "UTR_VALUE": "UTR VALUE", "UTR_MARKET_ANOMALY": "UTR MARKET ANOMALY", "PARTIDO_NUEVO": "NUEVO PARTIDO", "CARGA_EXTREMA": "CARGA EXTREMA", "MTO_RECIENTE": "MTO RECIENTE",
+          "MAESTRO_INICIO": "EMPEZÓ EL MAESTRO", "UNDER_PICK": "UNDER", "VENTAJA_LEVE": "VENTAJA LEVE", "PASAN_FILTRO": "PASAN FILTRO", "CUOTA_MAL_PUESTA": "CUOTA MAL PUESTA", "UTR_VALUE": "UTR VALUE", "UTR_MARKET_ANOMALY": "UTR MARKET ANOMALY", "RECORDADOR": "RECORDADOR", "PARTIDO_NUEVO": "NUEVO PARTIDO", "CARGA_EXTREMA": "CARGA EXTREMA", "MTO_RECIENTE": "MTO RECIENTE",
           "CUOTA_LEJOS": "CUOTA LEJOS DEL FTR", "RECORDATORIO": "PRÓXIMO PARTIDO",
           "CAMBIO_HORA": "CAMBIO DE HORA"}
 
@@ -523,6 +523,27 @@ def texto_al_empezar(s: dict) -> str:
 texto_cuota_mal_puesta = texto_al_empezar     # nombre anterior (07/10/2026)
 
 
+def texto_recordador(s: dict) -> str:
+    """⏰ RECORDADOR (08/10/2026): el próximo partido de un jugador que pidió
+    un usuario de FullTennis, minutos antes de la hora o cuando ya está en
+    juego. El texto lo arma RankingFTR; acá solo el pie."""
+    d = s.get("datos") or {}
+    cuerpo = (d.get("texto_discord") or "").strip() or (
+        f"⏰ **RECORDADOR**\n🎾 **{s.get('jugador1')}** vs {s.get('jugador2') or '—'}")
+    return f"{cuerpo}\n_Recordatorio pedido en FullTennis · señal #{s.get('id')}_"
+
+
+def voz_recordador(s: dict) -> str:
+    """La frase de RankingFTR, con los nombres como se dicen ('Kovacs L' →
+    'Kovacs')."""
+    d = s.get("datos") or {}
+    frase = (d.get("texto_voz") or "").strip()
+    for n in (d.get("jugador") or s.get("jugador1"), d.get("rival") or s.get("jugador2")):
+        if n and nombre_para_voz(n) != n:
+            frase = frase.replace(n, nombre_para_voz(n))
+    return frase
+
+
 def _es_en_vivo_anomalia(s: dict) -> bool:
     return ((s.get("datos") or {}).get("fase_activacion") or "").lower() == "vivo"
 
@@ -670,6 +691,8 @@ def _texto_canal_base(s: dict) -> str:
         return texto_al_empezar(s)
     if tipo == "UTR_MARKET_ANOMALY":
         return texto_anomalia(s)
+    if tipo == "RECORDADOR":
+        return texto_recordador(s)
     if tipo == "MAESTRO_AVISO":
         from ft_discord.config import ZONA_HORARIA
         return texto_maestro(s, ZONA_HORARIA)
@@ -745,6 +768,8 @@ def texto_voz(s: dict, zona: str, ahora: Optional[datetime] = None,
         j1, j2 = nombre_para_voz(s.get("jugador1")), nombre_para_voz(s.get("jugador2"))
         quien = "En vivo," if _es_en_vivo_anomalia(s) else "Empezó"
         return (f"{quien} {j1} contra {j2}. {frase}" if j1 and j2 else frase).strip()
+    if tipo == "RECORDADOR":
+        return voz_recordador(s)
     if tipo in ("VENTAJA_LEVE", "PASAN_FILTRO"):
         # La frase viene armada de RankingFTR (VL01-VL05, o la regla
         # automática de Pasan Filtro), SIN el

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Pruebas sin red ni Discord. La de contrato necesita FT_INTEL_REPO.
+# Pruebas sin red ni Discord. La de contrato necesita FT_INTEL_REPO; la del
+# recorrido completo, FT_INTEL_REPO y RANKINGFTR_REPO (sin ellas se saltean).
 set -u
 cd "$(dirname "$0")/.."
 # El intérprete: el del servicio (/opt/venv) si existe. En el servidor,
@@ -10,7 +11,7 @@ if [ -z "$PY" ]; then
   if [ -x /opt/venv/bin/python ]; then PY=/opt/venv/bin/python; else PY=python3; fi
 fi
 fallas=0
-for t in tests/test_bot.py tests/test_voz.py tests/test_mto_vivo.py tests/test_cuota_mal_puesta.py tests/test_contrato_ft_intelligence.py; do
+for t in tests/test_bot.py tests/test_voz.py tests/test_mto_vivo.py tests/test_cuota_mal_puesta.py tests/test_recordador.py tests/test_contrato_ft_intelligence.py tests/test_recorrido_completo.py; do
   echo "=== $t"
   salida=$("$PY" "$t" 2>/tmp/prueba_error.txt)
   codigo=$?

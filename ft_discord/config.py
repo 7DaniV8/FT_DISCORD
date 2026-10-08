@@ -35,9 +35,12 @@ import os
 # y voz: si se disparó EN VIVO, en el acto ("En vivo, A contra B. ..."); si fue
 # pre-partido, cuando el partido EMPIEZA, como UTR VALUE. Mismo OJO con las
 # variables de Railway.
+# RECORDADOR (08/10/2026): ⏰ el próximo partido de un jugador que pidió un
+# usuario en RankingFTR, minutos antes de la hora o cuando ya está en juego.
+# Texto y voz, en el acto. Mismo OJO con las variables de Railway.
 _TODOS = ("REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,APRENDIZAJE,CUOTA_MAL_PUESTA,"
-          "UTR_VALUE,UTR_MARKET_ANOMALY")
-_VOZ = "REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,CUOTA_MAL_PUESTA,UTR_VALUE,UTR_MARKET_ANOMALY"
+          "UTR_VALUE,UTR_MARKET_ANOMALY,RECORDADOR")
+_VOZ = "REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,CUOTA_MAL_PUESTA,UTR_VALUE,UTR_MARKET_ANOMALY,RECORDADOR"
 
 
 def _lista(nombre: str, defecto: str) -> set:
