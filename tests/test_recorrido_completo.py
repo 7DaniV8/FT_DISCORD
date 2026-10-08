@@ -55,6 +55,9 @@ os.environ.update({
     # aparte que NO cambió; acá se apaga para aislar la puerta 60 % / +10 pp
     # con jugadores sin historia (la probabilidad FT queda exacta).
     "CMP_DISCORD_EXIGIR_L10": "0",
+    # V2 (08/10/2026 tarde): la regla de confirmación (≥ 1 factor favorable)
+    # también es un control aparte; se apaga por el mismo motivo.
+    "CMP_FACTORES_POSITIVOS_MIN": "0",
 })
 
 ok = fallas = 0

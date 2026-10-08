@@ -22,7 +22,7 @@ EMOJI = {"REVISION_CUOTA": "📊", "PARTIDO_NUEVO": "🎾", "CARGA_EXTREMA": "�
          "RECORDATORIO": "⏳", "CAMBIO_HORA": "🕐", "RECORDADOR": "⏰"}
 TITULO = {"REVISION_CUOTA": "REVISIÓN DE CUOTA", "REVISION_VOZ": "AVISO DE VOZ",
           "RADAR_VOZ": "FT MARKET ANOMALY", "MAESTRO_AVISO": "PARTIDO MAESTRO",
-          "MAESTRO_INICIO": "EMPEZÓ EL MAESTRO", "UNDER_PICK": "UNDER", "VENTAJA_LEVE": "VENTAJA LEVE", "PASAN_FILTRO": "PASAN FILTRO", "CUOTA_MAL_PUESTA": "CUOTA MAL PUESTA", "UTR_VALUE": "UTR VALUE", "UTR_MARKET_ANOMALY": "UTR MARKET ANOMALY", "RECORDADOR": "RECORDADOR", "PARTIDO_NUEVO": "NUEVO PARTIDO", "CARGA_EXTREMA": "CARGA EXTREMA", "MTO_RECIENTE": "MTO RECIENTE",
+          "MAESTRO_INICIO": "EMPEZÓ EL MAESTRO", "UNDER_PICK": "UNDER", "VENTAJA_LEVE": "VENTAJA LEVE", "PASAN_FILTRO": "PASAN FILTRO", "CUOTA_MAL_PUESTA": "CUOTA MAL PUESTA", "UTR_VALUE": "UTR VALUE", "NEWS_VALOR": "POSIBLE VALOR POR NOTICIAS", "NEWS_INTERESANTE": "PARTIDO INTERESANTE", "NEWS_NOTICIA": "NOTICIA IMPORTANTE", "UTR_MARKET_ANOMALY": "UTR MARKET ANOMALY", "RECORDADOR": "RECORDADOR", "PARTIDO_NUEVO": "NUEVO PARTIDO", "CARGA_EXTREMA": "CARGA EXTREMA", "MTO_RECIENTE": "MTO RECIENTE",
           "CUOTA_LEJOS": "CUOTA LEJOS DEL FTR", "RECORDATORIO": "PRÓXIMO PARTIDO",
           "CAMBIO_HORA": "CAMBIO DE HORA"}
 
@@ -503,6 +503,22 @@ def texto_ventaja_leve(s: dict) -> str:
     return "\n".join(lineas)
 
 
+def texto_news(s: dict) -> str:
+    """📰 FT NEWS INTELLIGENCE (08/10/2026): el texto viene armado por FT_NEWS
+    con plantilla fija (sin probabilidades). Acá: primera línea en negrita y
+    un pie con la hora del partido. Se publica EN EL ACTO."""
+    d = s.get("datos") or {}
+    texto = (d.get("texto_discord") or s.get("resumen") or "").strip()
+    lineas = texto.split("\n") if texto else [s.get("resumen") or "📰 FT NEWS"]
+    lineas[0] = f"**{lineas[0].strip('*')}**"
+    try:
+        ts = int(_utc(s["fecha_partido"]).timestamp())
+        lineas.append(f"🕐 partido <t:{ts}:R> · _investigación de noticias; no es una recomendación_")
+    except Exception:
+        lineas.append("_investigación de noticias; no es una recomendación_")
+    return "\n".join(lineas)
+
+
 def texto_al_empezar(s: dict) -> str:
     """🚨 Cuota Mal Puesta y 📈 UTR VALUE (07/10/2026). Se anuncian CUANDO EL
     PARTIDO EMPIEZA (FT Intelligence lo confirma con el feed en vivo); el
@@ -692,6 +708,8 @@ def _texto_canal_base(s: dict) -> str:
         # 07/10/2026: el texto lo arma RankingFTR; acá, encabezado en negrita
         # y el pie de "empezó el partido".
         return texto_al_empezar(s)
+    if tipo in ("NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA"):
+        return texto_news(s)
     if tipo == "UTR_MARKET_ANOMALY":
         return texto_anomalia(s)
     if tipo == "RECORDADOR":
@@ -765,6 +783,10 @@ def texto_voz(s: dict, zona: str, ahora: Optional[datetime] = None,
         frase = (d.get("texto_voz") or "").strip()
         j1, j2 = nombre_para_voz(s.get("jugador1")), nombre_para_voz(s.get("jugador2"))
         return (f"Empezó {j1} contra {j2}. {frase}" if j1 and j2 else frase).strip()
+    if tipo in ("NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA"):
+        # 08/10/2026: la frase viene de FT_NEWS; se dice en el acto.
+        frase = (d.get("texto_voz") or "").strip()
+        return (f"Atención FullTennis. Noticia. {frase}" if frase else "").strip()
     if tipo == "UTR_MARKET_ANOMALY":
         # 07/10/2026: en vivo suena en el acto; pre-partido, al empezar.
         frase = (d.get("texto_voz") or "").strip()

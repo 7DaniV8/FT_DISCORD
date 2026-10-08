@@ -38,9 +38,15 @@ import os
 # RECORDADOR (08/10/2026): ⏰ el próximo partido de un jugador que pidió un
 # usuario en RankingFTR, minutos antes de la hora o cuando ya está en juego.
 # Texto y voz, en el acto. Mismo OJO con las variables de Railway.
+# NEWS_VALOR / NEWS_INTERESANTE / NEWS_NOTICIA (08/10/2026): 📰 FT NEWS
+# INTELLIGENCE, el investigador de noticias (servicio FT_NEWS, vía FT
+# Intelligence). El texto y la voz vienen armados; se dicen EN EL ACTO (la
+# noticia vale ahora). De fábrica solo NEWS_VALOR (🔥) suena; 🔎 y 📰 se
+# encienden desde Admin → Discord. Mismo OJO con las variables de Railway.
 _TODOS = ("REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,APRENDIZAJE,CUOTA_MAL_PUESTA,"
-          "UTR_VALUE,UTR_MARKET_ANOMALY,RECORDADOR")
-_VOZ = "REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,CUOTA_MAL_PUESTA,UTR_VALUE,UTR_MARKET_ANOMALY,RECORDADOR"
+          "UTR_VALUE,UTR_MARKET_ANOMALY,RECORDADOR,NEWS_VALOR")
+_VOZ = ("REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,CUOTA_MAL_PUESTA,UTR_VALUE,UTR_MARKET_ANOMALY,"
+        "RECORDADOR,NEWS_VALOR")
 
 
 def _lista(nombre: str, defecto: str) -> set:

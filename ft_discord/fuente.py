@@ -32,6 +32,23 @@ class Fuente:
             raise ErrorFuente(f"FT Intelligence HTTP {r.status_code}: {r.text[:120]}")
         return r.json()
 
+    async def configuracion(self) -> Optional[dict]:
+        """📣 (08/10/2026) GET /discord-config: lo que Admin → Discord decidió
+        en RankingFTR (por tipo texto/voz, encabezado, frase de voz; pausa).
+        None si FT Intelligence no lo tiene todavía (404) o no responde: el
+        bot sigue con sus variables de Railway."""
+        try:
+            r = await self._http.get("/discord-config")
+        except httpx.HTTPError:
+            return None
+        if r.status_code != 200:
+            return None
+        try:
+            d = r.json()
+        except ValueError:
+            return None
+        return d if isinstance(d, dict) and isinstance(d.get("tipos"), dict) else None
+
     async def ultimo_id(self) -> int:
         return int((await self._get(_MAX_ID, 1)).get("ultimo_id") or 0)
 

@@ -50,6 +50,36 @@ class Anunciador:
         self._hora: Counter = Counter()
         self.totales: Counter = Counter()
 
+    # 📣 Admin → Discord (08/10/2026): la configuración que viene de RankingFTR
+    # vía FT Intelligence. None = no llegó (o FT Intelligence viejo): mandan
+    # las variables de Railway como siempre.
+    config_remota: Optional[dict] = None
+
+    def _permite(self, tipo: str, canal: str) -> bool:
+        """canal: 'texto' | 'voz'. Con configuración remota, manda ella; sin
+        ella, las variables de Railway."""
+        c = self.config_remota
+        if c:
+            if c.get("pausa"):
+                return False
+            t = (c.get("tipos") or {}).get(tipo)
+            if t is not None:
+                return bool(t.get(canal))
+        return tipo in (self.tipos_texto if canal == "texto" else self.tipos_voz)
+
+    def _personalizar(self, tipo: str, texto: str, voz: str) -> tuple:
+        """Encabezado (primera línea del mensaje) y frase de voz al inicio."""
+        t = ((self.config_remota or {}).get("tipos") or {}).get(tipo) or {}
+        cab = (t.get("encabezado") or "").strip()
+        if cab and texto:
+            lineas = texto.split("\n")
+            lineas[0] = f"**{cab}**"
+            texto = "\n".join(lineas)
+        ini = (t.get("voz_inicio") or "").strip()
+        if ini and voz:
+            voz = f"{ini.rstrip('.')}. {voz}"
+        return texto, voz
+
     def resumen(self) -> tuple:
         """(lo de la última hora, lo acumulado desde el arranque); reinicia la hora."""
         hora, self._hora = dict(self._hora), Counter()
@@ -80,14 +110,17 @@ class Anunciador:
         return (self.reloj() - creado).total_seconds() / 60 > self.max_antiguedad_min
 
     async def _anunciar(self, tipo: str, texto: str, voz: str, r: dict) -> None:
-        if tipo in self.tipos_texto:
+        texto, voz = self._personalizar(tipo, texto, voz)
+        if not self._permite(tipo, "texto") and not self._permite(tipo, "voz"):
+            r["apagadas"] += 1
+        if self._permite(tipo, "texto"):
             try:
                 await self.publicar_texto(texto)
                 r["texto"] += 1
             except Exception as e:               # noqa: BLE001 -- una falla no frena al resto
                 r["errores"] += 1
                 log.warning(f"[FTDiscord] no se pudo publicar ({tipo}): {e}")
-        if tipo in self.tipos_voz:
+        if self._permite(tipo, "voz"):
             hora = self.reloj().astimezone(ZoneInfo(self.zona)).hour
             if en_silencio(self.silencio_voz, hora):
                 r["voz_omitida"] += 1
@@ -97,7 +130,15 @@ class Anunciador:
                 r["voz_omitida"] += 1            # cola llena o sin voz
 
     async def ciclo(self) -> dict:
-        r = {"texto": 0, "voz": 0, "viejas": 0, "voz_omitida": 0, "errores": 0, "agrupadas": 0}
+        r = {"texto": 0, "voz": 0, "viejas": 0, "voz_omitida": 0, "errores": 0, "agrupadas": 0, "apagadas": 0}
+        # 📣 La configuración de Admin se pide en cada ciclo (es chica); si no
+        # llega, se conserva la última buena y, si nunca llegó, Railway manda.
+        try:
+            cfg = await self.fuente.configuracion()
+        except Exception:                        # noqa: BLE001
+            cfg = None
+        if cfg is not None:
+            self.config_remota = cfg
         nuevas = []
         for s in await self.fuente.leer(self.cursor):
             self.cursor = max(self.cursor, s["id"])
