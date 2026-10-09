@@ -51,7 +51,14 @@ check("encabezado en negrita", t.split("\n")[0] == "**💎 FULLTENIS · CUOTA MU
 check("el cuerpo de RankingFTR tal cual", t.split("\n")[1:len(TXT.split("\n"))] == TXT.split("\n")[1:], t)
 # V2 (08/10/2026): el mensaje corto de Cuota Mal Puesta termina en "▶️ EN JUEGO".
 check("pie: EN JUEGO + cuándo se detectó (hora de Discord)",
-      t.split("\n")[-1].startswith("▶️ **EN JUEGO** · señal detectada <t:1791392400:R>"), t)
+      t.split("\n")[-1].startswith("▶️ **EN JUEGO** · Detectada <t:1791392400:R>"), t)
+# 09/10/2026 (Rubén): suena minutos ANTES de la hora programada.
+SA = {**S, "datos": {**S["datos"], "en_vivo": False, "momento": "ANTES", "minutos": 9}}
+ta_ = texto_canal(SA)
+check("minutos antes: pie 'EMPIEZA EN ~9 MIN · Detectada …'",
+      ta_.split("\n")[-1].startswith("⏳ **EMPIEZA EN ~9 MIN** · Detectada <t:1791392400:R>"), ta_)
+check("voz minutos antes: 'En nueve minutos, Carlos Uno contra Pedro Dos.' + frase",
+      texto_voz(SA, "UTC") == "En nueve minutos, Carlos Uno contra Pedro Dos. " + VOZ, texto_voz(SA, "UTC"))
 check("no agrega 'Favorito:'", "Favorito:" not in t)
 print("\n3. Voz")
 check("dice qué empezó y después la frase tal cual",
@@ -66,7 +73,7 @@ check("UTR_VALUE en texto y voz por defecto",
       "UTR_VALUE" in config.TIPOS_TEXTO and "UTR_VALUE" in config.TIPOS_VOZ)
 tu = texto_canal(U)
 check("texto UTR VALUE: encabezado en negrita + pie de inicio",
-      tu.startswith("**💎 FULLTENIS · UTR VALUE**") and "Empezó el partido" in tu, tu)
+      tu.startswith("**💎 FULLTENIS · UTR VALUE**") and "▶️ **EN JUEGO**" in tu, tu)
 check("voz UTR VALUE: qué empezó + frase tal cual",
       texto_voz(U, "UTC") == "Empezó Alto Uno contra Bajo Dos. UTR Value. Alto Uno. Paga dos punto cero cinco.",
       texto_voz(U, "UTC"))
@@ -85,14 +92,18 @@ ta = texto_canal(A)
 check("texto en vivo: encabezado en negrita, cuerpo tal cual, pie 'En vivo' (no 'Empezó')",
       ta.startswith("**🚨 FULLTENIS · UTR MARKET ANOMALY**") and "⚠️ JUGADOR UTR SUPERIOR A CUOTA EXTREMA" in ta
       and ta.split("\n")[-1].startswith("🔴 **En vivo** · cuota detectada <t:1791392400:R>")
-      and "Empezó el partido" not in ta, ta)
+      and "EN JUEGO" not in ta, ta)
 check("voz en vivo: 'En vivo, Beviz contra Biro.' + frase",
       texto_voz(A, "UTC") == "En vivo, Beviz contra Biro. UTR Market Anomaly. Beviz L. Paga cuatro punto veinte.",
       texto_voz(A, "UTC"))
 AP = {**A, "datos": {**A["datos"], "fase_activacion": "pre"}}
-check("pre-partido: pie de 'Empezó el partido' y voz 'Empezó …'",
-      "Empezó el partido" in texto_canal(AP) and texto_voz(AP, "UTC").startswith("Empezó Beviz contra Biro."),
+check("pre-partido visto al empezar: pie 'EN JUEGO' y voz 'Empezó …'",
+      "▶️ **EN JUEGO**" in texto_canal(AP) and texto_voz(AP, "UTC").startswith("Empezó Beviz contra Biro."),
       texto_canal(AP))
+APA = {**A, "datos": {**A["datos"], "fase_activacion": "pre", "momento": "ANTES", "minutos": 10}}
+check("pre-partido minutos antes: pie 'EMPIEZA EN ~10 MIN' y voz 'En diez minutos, …'",
+      "⏳ **EMPIEZA EN ~10 MIN**" in texto_canal(APA) and texto_voz(APA, "UTC").startswith("En diez minutos, Beviz contra Biro."),
+      texto_canal(APA) + " / " + texto_voz(APA, "UTC"))
 
 print()
 if fallas:

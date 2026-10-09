@@ -519,6 +519,17 @@ def texto_news(s: dict) -> str:
     return "\n".join(lineas)
 
 
+def _cuando_voz(d: dict) -> str:
+    """'En nueve minutos,' (momento ANTES) o 'Empezó'."""
+    if d.get("momento") == "ANTES":
+        m = d.get("minutos")
+        try:
+            return f"En {numero(int(m))} minutos," if m and int(m) > 1 else "Empieza ahora,"
+        except (TypeError, ValueError):
+            return "En minutos,"
+    return "Empezó"
+
+
 def texto_al_empezar(s: dict) -> str:
     """🚨 Cuota Mal Puesta y 📈 UTR VALUE (07/10/2026). Se anuncian CUANDO EL
     PARTIDO EMPIEZA (FT Intelligence lo confirma con el feed en vivo); el
@@ -527,13 +538,18 @@ def texto_al_empezar(s: dict) -> str:
     no de ahora."""
     d = s.get("datos") or {}
     lineas = texto_ventaja_leve(s).split("\n")
-    # 08/10/2026 (CUOTA MAL PUESTA V2, Rubén): el mensaje corto termina en
-    # "▶️ EN JUEGO". Para UTR VALUE se mantiene el pie de siempre.
-    pie = "▶️ **EN JUEGO**" if s.get("tipo") == "CUOTA_MAL_PUESTA" else "▶️ **Empezó el partido**"
+    # 09/10/2026 (Rubén: "siempre deben sonar minutos antes de que empiece el
+    # juego"): FT Intelligence manda momento=ANTES y los minutos que faltan;
+    # si lo vio empezar primero, EN JUEGO. Pie: "⏳ EMPIEZA EN ~9 MIN ·
+    # Detectada hace 3 h" / "▶️ EN JUEGO · Detectada hace 3 h".
+    if d.get("momento") == "ANTES":
+        m = d.get("minutos")
+        pie = f"⏳ **EMPIEZA EN ~{m} MIN**" if m else "⏳ **EMPIEZA EN MINUTOS**"
+    else:
+        pie = "▶️ **EN JUEGO**"
     try:
         ts = int(_utc(d["detectado_en"]).timestamp())
-        pie += f" · señal detectada <t:{ts}:R>" + (
-            "" if s.get("tipo") == "CUOTA_MAL_PUESTA" else " (cuota y probabilidades de ese momento)")
+        pie += f" · Detectada <t:{ts}:R>"
     except (KeyError, TypeError, ValueError):
         pass
     return "\n".join(lineas + ["", pie])
@@ -778,11 +794,12 @@ def texto_voz(s: dict, zona: str, ahora: Optional[datetime] = None,
     if tipo == "REVISION_VOZ":
         return voz_candidato(s, zona, ahora) if _es_candidato(d) else voz_aviso(s, zona, ahora)
     if tipo in ("CUOTA_MAL_PUESTA", "UTR_VALUE"):
-        # 07/10/2026: suena cuando el partido EMPIEZA. Primero qué empezó,
-        # después la frase de RankingFTR tal cual.
+        # 09/10/2026: suena minutos antes ("En nueve minutos, X contra Y") o,
+        # si se lo vio empezar primero, "Empezó X contra Y". Después la frase
+        # de RankingFTR tal cual.
         frase = (d.get("texto_voz") or "").strip()
         j1, j2 = nombre_para_voz(s.get("jugador1")), nombre_para_voz(s.get("jugador2"))
-        return (f"Empezó {j1} contra {j2}. {frase}" if j1 and j2 else frase).strip()
+        return (f"{_cuando_voz(d)} {j1} contra {j2}. {frase}" if j1 and j2 else frase).strip()
     if tipo in ("NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA"):
         # 08/10/2026: la frase viene de FT_NEWS; se dice en el acto.
         frase = (d.get("texto_voz") or "").strip()
@@ -791,7 +808,7 @@ def texto_voz(s: dict, zona: str, ahora: Optional[datetime] = None,
         # 07/10/2026: en vivo suena en el acto; pre-partido, al empezar.
         frase = (d.get("texto_voz") or "").strip()
         j1, j2 = nombre_para_voz(s.get("jugador1")), nombre_para_voz(s.get("jugador2"))
-        quien = "En vivo," if _es_en_vivo_anomalia(s) else "Empezó"
+        quien = "En vivo," if _es_en_vivo_anomalia(s) else _cuando_voz(d)
         return (f"{quien} {j1} contra {j2}. {frase}" if j1 and j2 else frase).strip()
     if tipo == "RECORDADOR":
         return voz_recordador(s)
