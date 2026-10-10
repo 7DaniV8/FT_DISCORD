@@ -71,6 +71,10 @@ class Anunciador:
         """Encabezado (primera línea del mensaje) y frase de voz al inicio."""
         t = ((self.config_remota or {}).get("tipos") or {}).get(tipo) or {}
         cab = (t.get("encabezado") or "").strip()
+        # v11: una 🔥 EXPERIMENTAL de FT NEWS nunca pierde la etiqueta por un encabezado
+        # personalizado (Rubén: "mantener la etiqueta EXPERIMENTAL").
+        if cab and texto and "EXPERIMENTAL" in texto.split("\n")[0].upper() and "EXPERIMENTAL" not in cab.upper():
+            cab = ""
         if cab and texto:
             lineas = texto.split("\n")
             lineas[0] = f"**{cab}**"

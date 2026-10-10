@@ -1,7 +1,7 @@
 """
 tests/test_news.py — 📰 FT NEWS INTELLIGENCE en Discord (08/10/2026): las
 señales NEWS_VALOR (🔥) salen en el acto con el texto y la voz de FT_NEWS;
-NEWS_INTERESANTE nace apagada y Admin la enciende. Sin red.
+v11: las tres (🔥 🔎 📰) nacen encendidas; Admin las gobierna. Sin red.
 """
 from __future__ import annotations
 
@@ -85,19 +85,20 @@ check("primera línea en negrita, el cuerpo de FT_NEWS tal cual y el pie", t.sta
 check("sin porcentajes ni 'probabilidad' en el texto", "%" not in t and "probabilidad" not in t.lower())
 v = texto_voz(senal(1, "NEWS_VALOR"), "UTC", AHORA)
 check("voz: 'Atención FullTennis. Noticia.' + la frase de FT_NEWS", v == "Atención FullTennis. Noticia. Juan Perez contra Luca Rossi. molestias en la muñeca derecha", v)
-check("de fábrica NEWS_VALOR suena (texto y voz) y NEWS_INTERESANTE no",
-      "NEWS_VALOR" in config.TIPOS_TEXTO and "NEWS_VALOR" in config.TIPOS_VOZ and "NEWS_INTERESANTE" not in config.TIPOS_TEXTO)
+check("v11: de fábrica suenan las tres de FT NEWS (texto y voz)",
+      {"NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA"} <= config.TIPOS_TEXTO
+      and {"NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA"} <= config.TIPOS_VOZ)
 
 
 async def escenario():
     fuente = Fuente("https://ft-intel.test", "secreto", transport=httpx.MockTransport(ft_intel))
     a = Anunciador(fuente, publicar, encolar, "UTC", config.TIPOS_TEXTO, config.TIPOS_VOZ, 30, reloj=lambda: AHORA)
     await a.arrancar(0)
-    print("\n2 · Sin configuración remota: 🔥 sale en el acto, 🔎 no")
+    print("\n2 · Sin configuración remota (v11): 🔥 y 🔎 salen en el acto, texto y voz")
     SENALES.append(senal(1, "NEWS_VALOR"))
     SENALES.append(senal(2, "NEWS_INTERESANTE"))
     r = await a.ciclo()
-    check("🔥 publicada y dicha; 🔎 apagada", r["texto"] == 1 and r["voz"] == 1 and len(publicados) == 1
+    check("🔥 y 🔎 publicadas y dichas de fábrica", r["texto"] == 2 and r["voz"] == 2 and len(publicados) == 2
           and dichos[-1].startswith("Atención FullTennis. Noticia."), (r, dichos))
     print("\n3 · Admin enciende 🔎 y cambia el encabezado de 🔥")
     CONFIG.update(estado=200, cuerpo={"version": 1, "pausa": False, "tipos": {
@@ -109,6 +110,15 @@ async def escenario():
     r = await a.ciclo()
     check("las dos salen por texto; solo 🔥 por voz", len(publicados) - n_t == 2 and len(dichos) - n_v == 1, (r, len(publicados) - n_t))
     check("el encabezado de Admin reemplaza la primera línea", any(p.startswith("**🔥 FULLTENIS · NOTICIA CON VALOR**") for p in publicados[n_t:]), publicados[n_t:])
+    print("\n4 · v11: una 🔥 EXPERIMENTAL no pierde la etiqueta por el encabezado personalizado")
+    exp = senal(5, "NEWS_VALOR")
+    exp["datos"] = {**exp["datos"], "experimental": True,
+                    "texto_discord": "🔥 FULLTENNIS · POSIBLE VALOR EXPERIMENTAL\n🎾 Luca Rossi vs Juan Perez\n🟢 JUGADOR FAVORECIDO: LUCA ROSSI\n💰 CUOTA: 2.90\n⚠️ Posible oportunidad sin validar estadísticamente."}
+    SENALES.append(exp)
+    n_t = len(publicados)
+    await a.ciclo()
+    check("la primera línea sigue diciendo EXPERIMENTAL", publicados[n_t].startswith("**🔥 FULLTENNIS · POSIBLE VALOR EXPERIMENTAL**")
+          and "JUGADOR FAVORECIDO: LUCA ROSSI" in publicados[n_t], publicados[n_t:])
 
 
 asyncio.run(escenario())

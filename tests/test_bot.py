@@ -265,9 +265,11 @@ check("sin variables, dice qué falta", len(config.problemas()) == 3, "; ".join(
 check("por defecto: alerta, Ventaja Leve, Pasan Filtro, MTO, Cuota Mal Puesta, Recordador y FT NEWS 🔥 por texto "
       "y voz; aprendizaje solo texto",
       config.TIPOS_TEXTO == {"REVISION_VOZ", "VENTAJA_LEVE", "PASAN_FILTRO", "MTO_VIVO", "APRENDIZAJE",
-                             "CUOTA_MAL_PUESTA", "UTR_VALUE", "UTR_MARKET_ANOMALY", "RECORDADOR", "NEWS_VALOR"}
+                             "CUOTA_MAL_PUESTA", "UTR_VALUE", "UTR_MARKET_ANOMALY", "RECORDADOR", "NEWS_VALOR",
+                             "NEWS_INTERESANTE", "NEWS_NOTICIA"}
       and config.TIPOS_VOZ == {"REVISION_VOZ", "VENTAJA_LEVE", "PASAN_FILTRO", "MTO_VIVO",
-                               "CUOTA_MAL_PUESTA", "UTR_VALUE", "UTR_MARKET_ANOMALY", "RECORDADOR", "NEWS_VALOR"})
+                               "CUOTA_MAL_PUESTA", "UTR_VALUE", "UTR_MARKET_ANOMALY", "RECORDADOR", "NEWS_VALOR",
+                               "NEWS_INTERESANTE", "NEWS_NOTICIA"})
 
 print("\n6. La ficha consolidada del motor de vigilancia")
 from ft_discord.textos import cuota_hablada  # noqa: E402

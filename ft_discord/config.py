@@ -41,12 +41,14 @@ import os
 # NEWS_VALOR / NEWS_INTERESANTE / NEWS_NOTICIA (08/10/2026): 📰 FT NEWS
 # INTELLIGENCE, el investigador de noticias (servicio FT_NEWS, vía FT
 # Intelligence). El texto y la voz vienen armados; se dicen EN EL ACTO (la
-# noticia vale ahora). De fábrica solo NEWS_VALOR (🔥) suena; 🔎 y 📰 se
-# encienden desde Admin → Discord. Mismo OJO con las variables de Railway.
+# noticia vale ahora). v11 (09/10/2026 23:13, Rubén: "activemos las tres
+# alertas de FT NEWS"): 🔥 NEWS_VALOR (validada y experimental), 🔎
+# NEWS_INTERESANTE y 📰 NEWS_NOTICIA suenan de fábrica, texto y voz; se
+# gobiernan en Admin → Discord → FT NEWS. Mismo OJO con las variables de Railway.
 _TODOS = ("REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,APRENDIZAJE,CUOTA_MAL_PUESTA,"
-          "UTR_VALUE,UTR_MARKET_ANOMALY,RECORDADOR,NEWS_VALOR")
+          "UTR_VALUE,UTR_MARKET_ANOMALY,RECORDADOR,NEWS_VALOR,NEWS_INTERESANTE,NEWS_NOTICIA")
 _VOZ = ("REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,CUOTA_MAL_PUESTA,UTR_VALUE,UTR_MARKET_ANOMALY,"
-        "RECORDADOR,NEWS_VALOR")
+        "RECORDADOR,NEWS_VALOR,NEWS_INTERESANTE,NEWS_NOTICIA")
 
 
 def _lista(nombre: str, defecto: str) -> set:
