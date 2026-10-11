@@ -45,10 +45,16 @@ import os
 # alertas de FT NEWS"): 🔥 NEWS_VALOR (validada y experimental), 🔎
 # NEWS_INTERESANTE y 📰 NEWS_NOTICIA suenan de fábrica, texto y voz; se
 # gobiernan en Admin → Discord → FT NEWS. Mismo OJO con las variables de Railway.
+# RECORDADOR_IA / RECORDADOR_VIVO (v12, 11/10/2026, "RECORDATORIOS INTELIGENTES
+# CON IA"): 🩹 el aviso 5 min antes con la observación del usuario y la
+# PROBABILIDAD FULLTENNIS BASE, y 🔴 el aviso corto al inicio real. Texto y voz
+# vienen armados de RankingFTR v43 y se dicen en el acto. RankingFTR solo los
+# manda cuando Admin activa RECORDADOR_IA_DISCORD=1 (hasta entonces, el ⏰ de
+# siempre); acá se gobiernan en Admin → Discord → Avisos. Mismo OJO con Railway.
 _TODOS = ("REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,APRENDIZAJE,CUOTA_MAL_PUESTA,"
-          "UTR_VALUE,UTR_MARKET_ANOMALY,RECORDADOR,NEWS_VALOR,NEWS_INTERESANTE,NEWS_NOTICIA")
+          "UTR_VALUE,UTR_MARKET_ANOMALY,RECORDADOR,RECORDADOR_IA,RECORDADOR_VIVO,NEWS_VALOR,NEWS_INTERESANTE,NEWS_NOTICIA")
 _VOZ = ("REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,CUOTA_MAL_PUESTA,UTR_VALUE,UTR_MARKET_ANOMALY,"
-        "RECORDADOR,NEWS_VALOR,NEWS_INTERESANTE,NEWS_NOTICIA")
+        "RECORDADOR,RECORDADOR_IA,RECORDADOR_VIVO,NEWS_VALOR,NEWS_INTERESANTE,NEWS_NOTICIA")
 
 
 def _lista(nombre: str, defecto: str) -> set:

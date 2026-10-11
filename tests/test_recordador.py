@@ -5,6 +5,10 @@ tests/test_recordador.py — ⏰ RECORDADOR en Discord (08/10/2026).
   1. Viene por defecto en los tipos de texto y de voz.
   2. Texto: el de RankingFTR tal cual + pie; sin "Favorito:" inventado.
   3. Voz: la frase de RankingFTR, con los nombres como se dicen.
+  4. v12 (11/10/2026): 🩹 RECORDADOR_IA y 🔴 RECORDADOR_VIVO vienen por defecto
+     en texto y voz; el formato aprobado de RankingFTR se publica tal cual (sin
+     "Favorito:", sin cuotas, sin "apostar"), con el pie; la voz dice los
+     porcentajes en palabras tal como llegan.
 """
 from __future__ import annotations
 
@@ -54,6 +58,29 @@ S2 = {**S, "datos": {**S["datos"], "momento": "EN_JUEGO",
                      "texto_voz": "Recordatorio FullTennis. Carlos Alcaraz ya está jugando contra Kovacs L."}}
 check("en juego", texto_voz(S2, "America/Bogota") ==
       "Recordatorio FullTennis. Carlos Alcaraz ya está jugando contra Kovacs.")
+
+print("\n4. v12: RECORDADOR_IA y RECORDADOR_VIVO")
+check("RECORDADOR_IA y RECORDADOR_VIVO por defecto en texto y voz",
+      {"RECORDADOR_IA", "RECORDADOR_VIVO"} <= config.TIPOS_TEXTO and {"RECORDADOR_IA", "RECORDADOR_VIVO"} <= config.TIPOS_VOZ)
+TXT_IA = ("🩹 FULLTENNIS · RECORDATORIO IA\n🎾 Carlos Alcaraz vs Kovacs L\n👀 Observación: cojera en pierna derecha.\n"
+          "📊 PROBABILIDAD FULLTENNIS BASE\nCarlos Alcaraz: 55%\nKovacs L: 45%\n🧠 Conclusión: observar sus desplazamientos desde el inicio.")
+VOZ_IA = "Recordatorio FullTennis. Carlos Alcaraz contra Kovacs L. Probabilidad base: cincuenta y cinco por ciento."
+SIA = {**S, "id": 12, "tipo": "RECORDADOR_IA", "datos": {**S["datos"], "tipo": "RECORDADOR_IA", "prediccion_id": 31,
+       "probabilidad": {"jugador": 0.55, "rival": 0.45, "base": True, "version": 2}, "texto_discord": TXT_IA, "texto_voz": VOZ_IA}}
+t = texto_canal(SIA)
+check("IA: el formato aprobado tal cual + pie de seguimiento", t.startswith(TXT_IA) and t.split("\n")[-1] == "_Seguimiento FullTennis · señal #12_", t)
+check("IA: nada inventado (sin 'Favorito:', sin cuota, sin 'apostar')", all(x not in t.lower() for x in ("favorito:", "cuota", "apost", "elo", "ftr ")))
+check("IA: voz con 'cincuenta y cinco por ciento' y 'Kovacs' dicho corto",
+      texto_voz(SIA, "America/Bogota") == "Recordatorio FullTennis. Carlos Alcaraz contra Kovacs. Probabilidad base: cincuenta y cinco por ciento.")
+TXT_VIVO = "🔴 FULLTENNIS · PARTIDO EN VIVO\n🎾 Carlos Alcaraz vs Kovacs L\n📊 FULLTENNIS: 55% vs 45% (base)\n🩹 En seguimiento: Carlos Alcaraz, cojera en pierna derecha.\n🧠 Conclusión: observar sus desplazamientos."
+SV = {**SIA, "id": 13, "tipo": "RECORDADOR_VIVO", "datos": {**SIA["datos"], "tipo": "RECORDADOR_VIVO", "momento": "EN_JUEGO", "en_vivo": True,
+      "texto_discord": TXT_VIVO, "texto_voz": "Empezó Carlos Alcaraz contra Kovacs L. Cincuenta y cinco por ciento base."}}
+t = texto_canal(SV)
+check("VIVO: corto, tal cual + pie", t.startswith(TXT_VIVO) and t.endswith("_Seguimiento FullTennis · señal #13_") and len(t) < len(texto_canal(SIA)), t)
+check("VIVO: voz tal cual", texto_voz(SV, "America/Bogota") == "Empezó Carlos Alcaraz contra Kovacs. Cincuenta y cinco por ciento base.")
+check("sin texto de RankingFTR: encabezado mínimo por tipo, sin inventar probabilidad",
+      texto_canal({**SV, "datos": {**SV["datos"], "texto_discord": ""}}).startswith("🔴 **FULLTENNIS · PARTIDO EN VIVO**\n🎾 **Carlos Alcaraz** vs Kovacs L")
+      and "%" not in texto_canal({**SIA, "datos": {**SIA["datos"], "texto_discord": ""}}))
 
 print(f"\n{ok} OK, {fallas} fallas")
 sys.exit(1 if fallas else 0)

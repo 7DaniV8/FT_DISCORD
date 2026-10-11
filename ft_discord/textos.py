@@ -19,10 +19,10 @@ from typing import Optional
 from zoneinfo import ZoneInfo
 
 EMOJI = {"REVISION_CUOTA": "📊", "PARTIDO_NUEVO": "🎾", "CARGA_EXTREMA": "🔋", "MTO_RECIENTE": "🩹", "CUOTA_LEJOS": "📊",
-         "RECORDATORIO": "⏳", "CAMBIO_HORA": "🕐", "RECORDADOR": "⏰"}
+         "RECORDATORIO": "⏳", "CAMBIO_HORA": "🕐", "RECORDADOR": "⏰", "RECORDADOR_IA": "🩹", "RECORDADOR_VIVO": "🔴"}
 TITULO = {"REVISION_CUOTA": "REVISIÓN DE CUOTA", "REVISION_VOZ": "AVISO DE VOZ",
           "RADAR_VOZ": "FT MARKET ANOMALY", "MAESTRO_AVISO": "PARTIDO MAESTRO",
-          "MAESTRO_INICIO": "EMPEZÓ EL MAESTRO", "UNDER_PICK": "UNDER", "VENTAJA_LEVE": "VENTAJA LEVE", "PASAN_FILTRO": "PASAN FILTRO", "CUOTA_MAL_PUESTA": "CUOTA MAL PUESTA", "UTR_VALUE": "UTR VALUE", "NEWS_VALOR": "POSIBLE VALOR POR NOTICIAS", "NEWS_INTERESANTE": "PARTIDO INTERESANTE", "NEWS_NOTICIA": "NOTICIA IMPORTANTE", "UTR_MARKET_ANOMALY": "UTR MARKET ANOMALY", "RECORDADOR": "RECORDADOR", "PARTIDO_NUEVO": "NUEVO PARTIDO", "CARGA_EXTREMA": "CARGA EXTREMA", "MTO_RECIENTE": "MTO RECIENTE",
+          "MAESTRO_INICIO": "EMPEZÓ EL MAESTRO", "UNDER_PICK": "UNDER", "VENTAJA_LEVE": "VENTAJA LEVE", "PASAN_FILTRO": "PASAN FILTRO", "CUOTA_MAL_PUESTA": "CUOTA MAL PUESTA", "UTR_VALUE": "UTR VALUE", "NEWS_VALOR": "POSIBLE VALOR POR NOTICIAS", "NEWS_INTERESANTE": "PARTIDO INTERESANTE", "NEWS_NOTICIA": "NOTICIA IMPORTANTE", "UTR_MARKET_ANOMALY": "UTR MARKET ANOMALY", "RECORDADOR": "RECORDADOR", "RECORDADOR_IA": "RECORDATORIO IA", "RECORDADOR_VIVO": "PARTIDO EN VIVO", "PARTIDO_NUEVO": "NUEVO PARTIDO", "CARGA_EXTREMA": "CARGA EXTREMA", "MTO_RECIENTE": "MTO RECIENTE",
           "CUOTA_LEJOS": "CUOTA LEJOS DEL FTR", "RECORDATORIO": "PRÓXIMO PARTIDO",
           "CAMBIO_HORA": "CAMBIO DE HORA"}
 
@@ -558,14 +558,25 @@ def texto_al_empezar(s: dict) -> str:
 texto_cuota_mal_puesta = texto_al_empezar     # nombre anterior (07/10/2026)
 
 
+RECORDADOR_TIPOS = ("RECORDADOR", "RECORDADOR_IA", "RECORDADOR_VIVO")
+
+
 def texto_recordador(s: dict) -> str:
     """⏰ RECORDADOR (08/10/2026): el próximo partido de un jugador que pidió
     un usuario de FullTennis, minutos antes de la hora o cuando ya está en
-    juego. El texto lo arma RankingFTR; acá solo el pie."""
+    juego. El texto lo arma RankingFTR; acá solo el pie.
+    v12 (11/10/2026, "RECORDATORIOS INTELIGENTES CON IA"): también
+    🩹 RECORDADOR_IA (5 min antes: observación + PROBABILIDAD FULLTENNIS BASE)
+    y 🔴 RECORDADOR_VIVO (al inicio real, corto). El formato aprobado viene
+    armado de RankingFTR y se publica TAL CUAL: sin tecnicismos, sin
+    porcentajes inventados, sin recomendaciones de apuesta. Solo el pie."""
     d = s.get("datos") or {}
-    cuerpo = (d.get("texto_discord") or "").strip() or (
-        f"⏰ **RECORDADOR**\n🎾 **{s.get('jugador1')}** vs {s.get('jugador2') or '—'}")
-    return f"{cuerpo}\n_Recordatorio pedido en FullTennis · señal #{s.get('id')}_"
+    tipo = str(s.get("tipo") or d.get("tipo") or "RECORDADOR").upper()
+    vacio = {"RECORDADOR_IA": "🩹 **FULLTENNIS · RECORDATORIO IA**", "RECORDADOR_VIVO": "🔴 **FULLTENNIS · PARTIDO EN VIVO**"
+             }.get(tipo, "⏰ **RECORDADOR**")
+    cuerpo = (d.get("texto_discord") or "").strip() or (f"{vacio}\n🎾 **{s.get('jugador1')}** vs {s.get('jugador2') or '—'}")
+    pie = "Seguimiento FullTennis" if tipo in ("RECORDADOR_IA", "RECORDADOR_VIVO") else "Recordatorio pedido en FullTennis"
+    return f"{cuerpo}\n_{pie} · señal #{s.get('id')}_"
 
 
 def voz_recordador(s: dict) -> str:
@@ -728,7 +739,7 @@ def _texto_canal_base(s: dict) -> str:
         return texto_news(s)
     if tipo == "UTR_MARKET_ANOMALY":
         return texto_anomalia(s)
-    if tipo == "RECORDADOR":
+    if tipo in RECORDADOR_TIPOS:                 # v12: ⏰ / 🩹 IA / 🔴 en vivo
         return texto_recordador(s)
     if tipo == "MAESTRO_AVISO":
         from ft_discord.config import ZONA_HORARIA
@@ -810,7 +821,7 @@ def texto_voz(s: dict, zona: str, ahora: Optional[datetime] = None,
         j1, j2 = nombre_para_voz(s.get("jugador1")), nombre_para_voz(s.get("jugador2"))
         quien = "En vivo," if _es_en_vivo_anomalia(s) else _cuando_voz(d)
         return (f"{quien} {j1} contra {j2}. {frase}" if j1 and j2 else frase).strip()
-    if tipo == "RECORDADOR":
+    if tipo in RECORDADOR_TIPOS:                 # v12: ⏰ / 🩹 IA / 🔴 en vivo
         return voz_recordador(s)
     if tipo in ("VENTAJA_LEVE", "PASAN_FILTRO"):
         # La frase viene armada de RankingFTR (VL01-VL05, o la regla

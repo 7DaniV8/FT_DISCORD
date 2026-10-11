@@ -139,9 +139,22 @@ def fx(fid, j1, j2, o1, o2, fav, prob):
             "player_id1": IDS.get(j1), "player_id2": IDS.get(j2)}
 
 
+conn.execute("""CREATE TABLE IF NOT EXISTS fixtures_ftr_elo (fixture_id INTEGER PRIMARY KEY, fecha TEXT, torneo TEXT, superficie TEXT,
+    genero TEXT, jugador1 TEXT, jugador2 TEXT, odd1 REAL, odd2 REAL, ftr1 REAL, ftr2 REAL, elo1 REAL, elo2 REAL,
+    muestra_suficiente INTEGER DEFAULT 0, delta_ftr REAL, delta_elo_utr REAL, prob_ftr REAL, prob_elo REAL, prob_ftr_bruta REAL,
+    prob_elo_bruta REAL, fiabilidad_ftr REAL, fiabilidad_elo REAL, favorito_nombre TEXT, cuota_favorito REAL, es_valor INTEGER DEFAULT 0,
+    es_descarte INTEGER DEFAULT 0, razon TEXT, actualizado_en TEXT)""")
+
+
 def reportar(f):
     """El mismo orden que fixture_reportar (07/10/2026): UTR VALUE, Cuota
-    Errada, anomalía."""
+    Errada, anomalía. v12: también deja el fixture en fixtures_ftr_elo, que es
+    lo que la revalidación FOTO 2 (FT Intelligence ≥ v16) vuelve a leer."""
+    conn.execute("INSERT OR REPLACE INTO fixtures_ftr_elo (fixture_id, fecha, torneo, superficie, genero, jugador1, jugador2, odd1, odd2, "
+                 "ftr1, ftr2, elo1, elo2, muestra_suficiente, prob_ftr, prob_elo, favorito_nombre, actualizado_en) "
+                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                 (f["fixture_id"], f["fecha"], f["torneo"], f["superficie"], f["genero"], f["jugador1"], f["jugador2"], f["odd1"], f["odd2"],
+                  f["ftr1"], f["ftr2"], f["elo1"], f["elo2"], 1, f["prob_ftr"], f["prob_elo"], f["favorito_nombre"], AHORA.isoformat()))
     uv.registrar(conn, f)
     cmp.registrar(conn, f)
     ua.observar(conn, f["fuente"], f["jugador1"], f["jugador2"], f["odd1"], f["odd2"], en_vivo=False,
@@ -227,8 +240,12 @@ tc = TestClient(_app)
 class _Puente(httpx.BaseTransport):
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         q_ = request.url.query.decode()
+        # v12: los POST de FT Intelligence (…/revalidar, …/dicho) llevan cuerpo JSON;
+        # sin pasarlo, RankingFTR respondía 400 y la revalidación "no disponible".
         r = tc.request(request.method, request.url.path + (f"?{q_}" if q_ else ""),
-                       headers={k: v for k, v in request.headers.items() if k.lower().startswith("x-")})
+                       headers={k: v for k, v in request.headers.items()
+                                if k.lower().startswith("x-") or k.lower() == "content-type"},
+                       content=request.content or None)
         return httpx.Response(r.status_code, content=r.content,
                               headers={"content-type": r.headers.get("content-type", "")})
 
