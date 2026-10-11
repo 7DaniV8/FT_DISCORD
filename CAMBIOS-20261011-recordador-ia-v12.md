@@ -22,7 +22,7 @@ Intelligence v20**. Para revisión antes de producción.
   `RECORDADOR_IA_DISCORD=1`: hasta entonces RankingFTR manda el ⏰ de siempre
   (modo prueba).
 
-## v12b (11/10/2026 10:27): prueba real de punta a punta
+## v12b / v12c (11/10/2026): prueba real de punta a punta (v12c: títulos de probabilidad de v43c)
 
 Rubén: "antes de dejarlo funcionando definitivamente, realiza una prueba real
 de los dos avisos y confirma que llegan correctamente a Discord".

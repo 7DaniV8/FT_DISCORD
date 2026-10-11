@@ -179,11 +179,11 @@ check("primer ciclo: 3 textos publicados y 3 voces encoladas (viejo + 🩹 + �
 ia = [t for t in publicados if t.startswith("🩹 FULLTENNIS · RECORDATORIO IA")]
 vivo = [t for t in publicados if t.startswith("🔴 FULLTENNIS · PARTIDO EN VIVO")]
 viejo = [t for t in publicados if t.startswith("⏰")]
-check("🩹 RECORDATORIO IA llega a Discord con observación, PROBABILIDAD FULLTENNIS BASE 55 % / 45 % y conclusión, más el pie",
-      len(ia) == 1 and "👀 Observación:" in ia[0] and "📊 PROBABILIDAD FULLTENNIS BASE" in ia[0] and "Jugador de Prueba: 55%" in ia[0]
+check("🩹 RECORDATORIO IA llega a Discord con observación, PROBABILIDAD FULLTENNIS (con qué se calculó) 55 % / 45 % y conclusión, más el pie",
+      len(ia) == 1 and "👀 Observación:" in ia[0] and "📊 PROBABILIDAD FULLTENNIS (Elo + FTR · con la observación)" in ia[0] and "Jugador de Prueba: 55%" in ia[0]
       and "🧠 Conclusión:" in ia[0] and "_Seguimiento FullTennis · señal #" in ia[0].split("\n")[-1], ia)
-check("🔴 PARTIDO EN VIVO llega corto, con 55% vs 45% (base) y el resumen de la observación",
-      len(vivo) == 1 and "📊 FULLTENNIS: 55% vs 45% (base)" in vivo[0] and "🩹 En seguimiento: Jugador de Prueba, cojera en pierna derecha." in vivo[0]
+check("🔴 PARTIDO EN VIVO llega corto, con 55% vs 45% y el resumen de la observación",
+      len(vivo) == 1 and "📊 FULLTENNIS: 55% vs 45%" in vivo[0] and "🩹 En seguimiento: Jugador de Prueba, cojera en pierna derecha." in vivo[0]
       and len(vivo[0]) < len(ia[0]), vivo)
 check("el aviso viejo (anterior a v43) sale con el ⏰ formato de siempre, una sola vez", len(viejo) == 1 and "Viejo Uno" in viejo[0])
 check("nada inventado: sin 'Favorito:', sin cuotas, sin 'apostar'",
