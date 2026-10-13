@@ -76,6 +76,10 @@ def _entero(nombre: str) -> int:
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN", "").strip()
 CANAL_TEXTO_ID = _entero("DISCORD_CANAL_TEXTO_ID")
 CANAL_VOZ_ID = _entero("DISCORD_CANAL_VOZ_ID")          # 0 = sin voz
+# v16 (13/10/2026, Rubén: "las pruebas técnicas solo a administradores"): canal de texto
+# SOLO para administradores. Una señal con datos.solo_admin (la 🧪 PRUEBA de FT NEWS) va
+# acá y a ningún otro lado: sin este canal, NO se publica (nunca cae en el de la comunidad).
+CANAL_ADMIN_ID = _entero("DISCORD_CANAL_ADMIN_ID")      # 0 = sin canal de admin
 
 FT_INTEL_URL = os.getenv("FT_INTEL_URL", "").strip().rstrip("/")
 FTR_SECRET = os.getenv("FTR_INTERNAL_SECRET", "").strip()

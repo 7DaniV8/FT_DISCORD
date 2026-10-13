@@ -214,6 +214,18 @@ class Bot(discord.Client):
         async def publicar(texto: str) -> None:
             await canal.send(texto[:1900], allowed_mentions=discord.AllowedMentions.none())
 
+        # v16: canal SOLO de administradores (la 🧪 PRUEBA de FT NEWS). Sin él, eso no se publica.
+        publicar_admin = None
+        if config.CANAL_ADMIN_ID:
+            try:
+                canal_admin = self.get_channel(config.CANAL_ADMIN_ID) or await self.fetch_channel(config.CANAL_ADMIN_ID)
+
+                async def publicar_admin(texto: str) -> None:
+                    await canal_admin.send(texto[:1900], allowed_mentions=discord.AllowedMentions.none())
+            except Exception as e:               # noqa: BLE001 -- sin canal de admin el resto sigue
+                publicar_admin = None
+                log.warning(f"[FTDiscord] no se pudo abrir el canal de administradores {config.CANAL_ADMIN_ID}: {e}")
+
         tts = tts_mod.crear(config.TTS_PROVEEDOR, clave=config.GOOGLE_TTS_API_KEY,
                             idioma=config.TTS_IDIOMA, voz=config.TTS_VOZ,
                             velocidad=config.TTS_VELOCIDAD)
@@ -232,9 +244,10 @@ class Bot(discord.Client):
                                 config.ZONA_HORARIA, config.TIPOS_TEXTO, config.TIPOS_VOZ,
                                 config.MAX_ANTIGUEDAD_MIN, config.SILENCIO_VOZ,
                                 umbral_agrupar=config.UMBRAL_AGRUPAR,
-                                voz_probabilidades=config.VOZ_PROBABILIDADES)
+                                voz_probabilidades=config.VOZ_PROBABILIDADES,
+                                publicar_admin=publicar_admin)
         cursor = await anunciador.arrancar_con_reintentos(config.DESDE_ID)
-        print(f"[FTDiscord] listo como {self.user} | texto #{canal} | voz: "
+        print(f"[FTDiscord] listo como {self.user} | texto #{canal} | admin: {'sí' if publicar_admin else 'no'} | voz: "
               f"{'sí' if voz else 'no'} | desde la señal #{cursor}", flush=True)
         if config.PRUEBA:
             await self._prueba(publicar, voz)

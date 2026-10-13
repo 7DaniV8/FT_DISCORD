@@ -26,7 +26,9 @@ from ft_discord.textos import texto_canal, texto_canal_grupo, texto_voz, texto_v
 log = logging.getLogger(__name__)
 AGRUPABLES = ("PARTIDO_NUEVO", "RECORDATORIO")
 # v14 (13/10/2026): tipos de los que se le confirma a FT Intelligence qué se publicó y qué se dijo.
-ACUSE_TIPOS = ("IMPLICACION",)
+# v16 (13/10/2026, Rubén: "no quiero que aparezca como enviada una alerta que FT Discord no haya
+# confirmado"): también las tres de FT NEWS; FT Intelligence le reenvía el acuse a FT_NEWS.
+ACUSE_TIPOS = ("IMPLICACION", "NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA")
 
 
 def en_silencio(rango: str, hora_local: int) -> bool:
@@ -42,8 +44,11 @@ class Anunciador:
                  encolar_voz: Callable[[str], bool], zona: str, tipos_texto: set,
                  tipos_voz: set, max_antiguedad_min: float, silencio_voz: str = "",
                  reloj: Optional[Callable[[], datetime]] = None, umbral_agrupar: int = 3,
-                 voz_probabilidades: bool = True):
+                 voz_probabilidades: bool = True,
+                 publicar_admin: Optional[Callable[[str], Awaitable[None]]] = None):
         self.fuente, self.publicar_texto, self.encolar_voz = fuente, publicar_texto, encolar_voz
+        # v16: canal SOLO de administradores (None = no hay; lo de admin no se publica en ningún lado)
+        self.publicar_admin = publicar_admin
         self.zona, self.tipos_texto, self.tipos_voz = zona, tipos_texto, tipos_voz
         self.max_antiguedad_min, self.silencio_voz = max_antiguedad_min, silencio_voz
         self.reloj = reloj or (lambda: datetime.now(timezone.utc))
@@ -151,6 +156,29 @@ class Anunciador:
             acuse["motivo"] = acuse["motivo"] or "voz apagada para este tipo"
         return acuse
 
+    async def _anunciar_admin(self, tipo: str, texto: str, r: dict) -> dict:
+        """v16: una señal marcada solo_admin (la 🧪 PRUEBA de FT NEWS). Va SOLO al canal de
+        administradores, sin voz (el canal de voz es el de la comunidad) y sin encabezado
+        personalizado. Sin canal de admin configurado, no se publica en ningún lado."""
+        acuse = {"texto": False, "voz": False, "motivo": None, "canal": "admin"}
+        if (self.config_remota or {}).get("pausa"):
+            acuse["motivo"] = "pausa general en Admin → Discord"
+            return acuse
+        if self.publicar_admin is None:
+            r["admin_sin_canal"] = r.get("admin_sin_canal", 0) + 1
+            acuse["motivo"] = "no hay canal de administradores (falta DISCORD_CANAL_ADMIN_ID): no se publicó en ningún lado"
+            return acuse
+        try:
+            await self.publicar_admin(texto)
+            r["admin"] = r.get("admin", 0) + 1
+            acuse["texto"] = True
+            acuse["motivo"] = "solo canal de administradores; sin voz"
+        except Exception as e:               # noqa: BLE001
+            r["errores"] += 1
+            acuse["motivo"] = f"no se pudo publicar en el canal de administradores: {str(e)[:100]}"
+            log.warning(f"[FTDiscord] no se pudo publicar en admin ({tipo}): {e}")
+        return acuse
+
     async def ciclo(self) -> dict:
         r = {"texto": 0, "voz": 0, "viejas": 0, "voz_omitida": 0, "errores": 0, "agrupadas": 0, "apagadas": 0}
         # 📣 La configuración de Admin se pide en cada ciclo (es chica); si no
@@ -180,8 +208,12 @@ class Anunciador:
         acuses = []
         for s in nuevas:
             if s["tipo"] not in agrupadas:
-                a = await self._anunciar(s["tipo"], texto_canal(s),
-                                         texto_voz(s, self.zona, ahora, self.voz_probabilidades), r)
+                if (s.get("datos") or {}).get("solo_admin"):
+                    a = await self._anunciar_admin(s["tipo"], texto_canal(s), r)
+                else:
+                    a = await self._anunciar(s["tipo"], texto_canal(s),
+                                             texto_voz(s, self.zona, ahora, self.voz_probabilidades), r)
+                    a["canal"] = "comunidad"
                 if s["tipo"] in ACUSE_TIPOS:
                     acuses.append({"senal_id": s["id"], "tipo": s["tipo"], "en": ahora.isoformat(), **a})
         if acuses:
