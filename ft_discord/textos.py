@@ -591,27 +591,32 @@ def voz_recordador(s: dict) -> str:
     return frase
 
 
+MARCA_IMP_EXPERIMENTAL = "🧪 Señal experimental · En estudio"
+
+
+def _imp_experimental(d: dict) -> bool:
+    return bool(d.get("experimental") or d.get("aviso") == "experimental")
+
+
 def texto_implicacion(s: dict) -> str:
-    """🏆 IMPLICACIÓN DE TORNEO (v13, 13/10/2026). El texto lo arma RankingFTR v45 (favorito
-    PRE, UTR, set 1 perdido, cuota LIVE, puntos que defiende) y se publica TAL CUAL; acá solo
-    el pie. Una PRUEBA del circuito llega con su primera línea "🧪 PRUEBA DEL CIRCUITO" y el
-    pie lo repite: nunca puede leerse como una señal confirmada."""
+    """🏆 IMPLICACIÓN DE TORNEO. El texto lo arma RankingFTR y se publica TAL CUAL.
+    v15 (13/10/2026, Rubén — formato definitivo): sin códigos internos (regla, n.º de señal) en el
+    mensaje. Un experimental lleva AL FINAL, discreta, «🧪 Señal experimental · En estudio» (si un
+    RankingFTR anterior no la trae, se agrega acá). Una PRUEBA conserva su marca arriba y su pie."""
     d = s.get("datos") or {}
     cuerpo = (d.get("texto_discord") or "").strip() or (
-        f"🏆 **IMPLICACIÓN DE TORNEO**\n**{s.get('jugador1')}** vs {s.get('jugador2') or '—'}")
+        f"🏆 **FULLTENNIS · IMPLICACIÓN DE TORNEO**\n🎾 **{s.get('jugador1')}** vs {s.get('jugador2') or '—'}")
     if d.get("prueba"):
-        return f"{cuerpo}\n_🧪 Prueba del circuito, no es una señal · #{s.get('id')}_"
-    if d.get("experimental") or d.get("aviso") == "experimental":
-        # v14: un experimental NUNCA se presenta como pick validado: marca arriba (la pone RankingFTR) y abajo.
-        if "EXPERIMENTAL" not in cuerpo.split("\n")[0].upper():
-            cuerpo = "🧪 **EXPERIMENTAL — EN ESTUDIO** · no es un pick validado\n" + cuerpo
-        return f"{cuerpo}\n_🧪 Experimental · en estudio · {d.get('regla') or 'IMP'} · señal #{s.get('id')}_"
-    return f"{cuerpo}\n_🔴 En vivo · {d.get('regla') or 'IMP'} · señal #{s.get('id')}_"
+        return f"{cuerpo}\n-# 🧪 Prueba del circuito · no es una señal"
+    if _imp_experimental(d) and "experimental" not in cuerpo.lower():
+        cuerpo = f"{cuerpo}\n-# {MARCA_IMP_EXPERIMENTAL}"
+    return cuerpo
 
 
 def voz_implicacion(s: dict) -> str:
-    """La frase de RankingFTR, con los nombres como se dicen. Una prueba empieza por
-    "Prueba del circuito" (lo pone RankingFTR; si faltara, se agrega acá)."""
+    """La frase de RankingFTR, con los nombres como se dicen, precedida de «Atención FullTennis.».
+    Una prueba empieza por "Prueba del circuito"; un experimental termina (v15) con «Señal experimental,
+    en estudio.» — si la frase no lo trae, se agrega al final, nunca dos veces."""
     d = s.get("datos") or {}
     frase = (d.get("texto_voz") or "").strip()
     for n in (d.get("jugador") or s.get("jugador1"), d.get("rival") or s.get("jugador2")):
@@ -619,8 +624,8 @@ def voz_implicacion(s: dict) -> str:
             frase = frase.replace(n, nombre_para_voz(n))
     if d.get("prueba") and frase and not frase.lower().startswith("prueba"):
         frase = f"Prueba del circuito. {frase}"
-    elif (d.get("experimental") or d.get("aviso") == "experimental") and frase and "experimental" not in frase.lower()[:60]:
-        frase = f"Señal experimental, en estudio. {frase}"
+    elif _imp_experimental(d) and frase and "experimental" not in frase.lower():
+        frase = f"{frase.rstrip('.')}. Señal experimental, en estudio."
     return f"Atención FullTennis. {frase}" if frase else ""
 
 

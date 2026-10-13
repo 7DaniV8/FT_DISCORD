@@ -15,7 +15,7 @@ Sin esas dos variables, se saltea.
   2. La prueba recorre RankingFTR → FT Intelligence → FT Discord (texto + voz); FT Discord ACUSA lo que hizo
      (POST /senales/acuse) → FT Intelligence lo informa (POST /ft-intel/implicacion/dicho) → RankingFTR
      ENCIENDE solo IMP_DISCORD_ACTIVO e IMP_DISCORD_EXPERIMENTAL.
-  3. Un IMP-R3 (implicación ALTA) sale como «🧪 EXPERIMENTAL — EN ESTUDIO», con texto y voz, con todos los datos;
+  3. Un IMP-R3 (implicación ALTA) sale con el formato definitivo (v15) y «🧪 Señal experimental · En estudio» al final;
      su nivel sigue «experimental». Un R1 de implicación media NO sale (no está en las reglas habilitadas).
   4. Sin duplicados; el acuse vuelve; los demás tipos de Discord no cambian; apagar la opción corta el envío.
 """
@@ -200,7 +200,7 @@ check("los demás tipos de Discord no cambiaron (Admin → Discord intacto)",
       {t: v for t, v in dcfg.para_discord(conn)["tipos"].items() if t != "IMPLICACION"} == OTROS_ANTES)
 
 # ═════════════════════════════════════════════════════════════════════
-print("\n3 · Una oportunidad real: IMP-R3 sale como 🧪 EXPERIMENTAL — EN ESTUDIO")
+print("\n3 · Una oportunidad real: IMP-R3 sale con el formato definitivo y «🧪 Señal experimental · En estudio»")
 p2 = partido(2, jugador1="Taylor Fritz", jugador2="Arthur Fils", torneo="ATP Viena - R16", torneo_base="ATP Viena",
              defensa1=330, puntos1=1300, rank1=40, fav_pre_cuota=1.28, cuota_perdedor_set1=2.75)
 p3 = partido(3, jugador1="Jugador Medio", jugador2="Otro", defensa1=150, puntos1=1200, rank1=60)   # 12.5 % → R1, implicación MEDIA
@@ -219,18 +219,26 @@ msg = publicados[-1]
 print("\n   " + msg.replace("\n", "\n   "))
 print("   🔊 " + dichos[-1])
 check("FT Discord lo publica Y lo dice por voz (1 texto, 1 voz)", r2["avisados"] == 1 and c3["texto"] == 1 and c3["voz"] == 1, (r2, c3))
-check("primera línea «🧪 EXPERIMENTAL — EN ESTUDIO» (aunque Admin tenga encabezado) y pie experimental, nunca como validado",
-      msg.startswith("🧪 **EXPERIMENTAL — EN ESTUDIO**") and "no es un pick validado" in msg.split("\n")[0]
-      and msg.split("\n")[-1].startswith("_🧪 Experimental · en estudio · IMP-R3") and "En vivo · IMP" not in msg, msg.split("\n")[-1])
-check("trae partido y torneo, favorito PRE con su cuota PRE de Pinnacle, cuota LIVE verificada",
-      "ATP Viena" in msg and "🎾 **Taylor Fritz** vs Arthur Fils" in msg and "⭐ Favorito PRE: Taylor Fritz · cuota PRE Pinnacle 1.28" in msg
-      and "💰 Cuota LIVE verificada: 2.75" in msg)
-check("nivel de implicación y puntos que defiende; UTR, Elo y FTR", "🔴 Implicación ALTA · defiende 330 puntos (25 % de sus puntos)" in msg
-      and "📊 UTR 13.50 vs 13.00 · Elo 70 % · FTR 62 %" in msg)
-check("motivo exacto de la alerta", "📌 Motivo: IMP-R3 — favorito PRE (1.28) perdió el 1.er set 4-6 con implicación ALTA" in msg
-      and "defiende 330 pts (25 % de sus puntos)" in msg)
-check("voz: 'Atención FullTennis. Señal experimental, en estudio. Implicación de torneo. Taylor Fritz…'",
-      dichos[-1].startswith("Atención FullTennis. Señal experimental, en estudio. Implicación de torneo. Taylor Fritz"), dichos[-1])
+L = msg.split("\n")
+check("v15 · formato definitivo: título, partido, favorito antes del partido, cuota ACTUAL (la LIVE verificada)",
+      "FULLTENNIS · IMPLICACIÓN DE TORNEO" in L[0] and L[1] == "🎾 **Taylor Fritz** vs Arthur Fils"
+      and L[2] == "⭐ **FAVORITO ANTES DEL PARTIDO:** Taylor Fritz" and L[3] == "🔥 **CUOTA ACTUAL:** 2.75", L[:4])
+check("¿qué tiene en juego?: ranking, defensa y %, proyección (o «Proyección no disponible»), nivel ALTO 🔴",
+      "🏆 **¿QUÉ TIENE EN JUEGO?**" in L and "📊 Ranking actual: #40" in L and "🎯 Defiende 330 puntos (25 % de sus puntos)" in L
+      and ("📉 Proyección no disponible." in L or any(x.startswith("📉 Si pierde hoy") for x in L))
+      and "💪 **NIVEL DE IMPLICACIÓN: ALTO 🔴**" in L, L)
+check("AL FINAL y discreta «🧪 Señal experimental · En estudio», una sola vez; nunca como validado",
+      L[-1] == "-# 🧪 Señal experimental · En estudio" and msg.lower().count("experimental") == 1, L[-1])
+check("sin cuota PRE, UTR/Elo/FTR/MatchUp, códigos internos (IMP-R3, n.º de señal) ni motivo",
+      not any(x in msg for x in ("PRE", "UTR", "Elo", "FTR", "MatchUp", "IMP-R", "Motivo", "señal #", "1.28")), msg)
+k2_ = dict(conn.execute("SELECT fav_cuota_pre, utr_sel, regla, cuota FROM implicacion_picks WHERE partido_id=?", (p2,)).fetchone())
+check("…todo eso sigue guardado internamente en el pick (cuota PRE, UTR, regla, cuota exacta de la detección)",
+      k2_ == {"fav_cuota_pre": 1.28, "utr_sel": 13.5, "regla": "IMP-R3", "cuota": 2.75}, k2_)
+check("voz: 'Atención FullTennis. Implicación de torneo. Taylor Fritz, favorito antes del partido, perdió el primer set. "
+      "Su cuota actual es 2 punto 75. Defiende 330 puntos… Implicación alta. Señal experimental, en estudio.'",
+      dichos[-1].startswith("Atención FullTennis. Implicación de torneo. Taylor Fritz, favorito antes del partido, perdió el primer set. "
+                            "Su cuota actual es 2 punto 75. Defiende 330 puntos") and "Implicación alta." in dichos[-1]
+      and dichos[-1].endswith("Señal experimental, en estudio.") and dichos[-1].lower().count("experimental") == 1, dichos[-1])
 
 print("\n4 · Sin duplicados, acuse, resultado y apagado")
 check("una segunda vuelta no repite nada (FT Intelligence ni FT Discord)",
