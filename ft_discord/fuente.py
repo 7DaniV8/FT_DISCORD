@@ -55,5 +55,14 @@ class Fuente:
     async def leer(self, desde_id: int, limite: int = 100) -> list:
         return (await self._get(desde_id, limite)).get("senales") or []
 
+    async def acusar(self, acuses: list) -> bool:
+        """v14: POST /senales/acuse — qué se publicó en el canal y qué voz se encoló. Un FT Intelligence
+        anterior (404) o caído no rompe nada: se devuelve False."""
+        try:
+            r = await self._http.post("/senales/acuse", json={"acuses": acuses})
+        except httpx.HTTPError:
+            return False
+        return r.status_code == 200
+
     async def cerrar(self) -> None:
         await self._http.aclose()

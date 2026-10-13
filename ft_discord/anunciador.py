@@ -25,6 +25,8 @@ from ft_discord.textos import texto_canal, texto_canal_grupo, texto_voz, texto_v
 
 log = logging.getLogger(__name__)
 AGRUPABLES = ("PARTIDO_NUEVO", "RECORDATORIO")
+# v14 (13/10/2026): tipos de los que se le confirma a FT Intelligence qué se publicó y qué se dijo.
+ACUSE_TIPOS = ("IMPLICACION",)
 
 
 def en_silencio(rango: str, hora_local: int) -> bool:
@@ -117,25 +119,37 @@ class Anunciador:
         creado = creado if creado.tzinfo else creado.replace(tzinfo=timezone.utc)
         return (self.reloj() - creado).total_seconds() / 60 > self.max_antiguedad_min
 
-    async def _anunciar(self, tipo: str, texto: str, voz: str, r: dict) -> None:
+    async def _anunciar(self, tipo: str, texto: str, voz: str, r: dict) -> dict:
+        """v14: devuelve el ACUSE {texto, voz, motivo}: si el mensaje se publicó en el canal y si la voz
+        se encoló (y por qué no)."""
         texto, voz = self._personalizar(tipo, texto, voz)
+        acuse = {"texto": False, "voz": False, "motivo": None}
         if not self._permite(tipo, "texto") and not self._permite(tipo, "voz"):
             r["apagadas"] += 1
+            acuse["motivo"] = "tipo apagado en Admin → Discord (o pausa general)"
         if self._permite(tipo, "texto"):
             try:
                 await self.publicar_texto(texto)
                 r["texto"] += 1
+                acuse["texto"] = True
             except Exception as e:               # noqa: BLE001 -- una falla no frena al resto
                 r["errores"] += 1
+                acuse["motivo"] = f"no se pudo publicar: {str(e)[:100]}"
                 log.warning(f"[FTDiscord] no se pudo publicar ({tipo}): {e}")
         if self._permite(tipo, "voz"):
             hora = self.reloj().astimezone(ZoneInfo(self.zona)).hour
             if en_silencio(self.silencio_voz, hora):
                 r["voz_omitida"] += 1
+                acuse["motivo"] = acuse["motivo"] or "voz: horario de silencio"
             elif self.encolar_voz(voz):
                 r["voz"] += 1
+                acuse["voz"] = True
             else:
                 r["voz_omitida"] += 1            # cola llena o sin voz
+                acuse["motivo"] = acuse["motivo"] or "voz: cola llena o sin canal de voz"
+        elif self._permite(tipo, "texto"):
+            acuse["motivo"] = acuse["motivo"] or "voz apagada para este tipo"
+        return acuse
 
     async def ciclo(self) -> dict:
         r = {"texto": 0, "voz": 0, "viejas": 0, "voz_omitida": 0, "errores": 0, "agrupadas": 0, "apagadas": 0}
@@ -163,10 +177,20 @@ class Anunciador:
                 r["agrupadas"] += len(grupo)
                 await self._anunciar(tipo, texto_canal_grupo(tipo, grupo),
                                      texto_voz_grupo(tipo, grupo, self.zona, ahora), r)
+        acuses = []
         for s in nuevas:
             if s["tipo"] not in agrupadas:
-                await self._anunciar(s["tipo"], texto_canal(s),
-                                     texto_voz(s, self.zona, ahora, self.voz_probabilidades), r)
+                a = await self._anunciar(s["tipo"], texto_canal(s),
+                                         texto_voz(s, self.zona, ahora, self.voz_probabilidades), r)
+                if s["tipo"] in ACUSE_TIPOS:
+                    acuses.append({"senal_id": s["id"], "tipo": s["tipo"], "en": ahora.isoformat(), **a})
+        if acuses:
+            # v14: FT Intelligence → RankingFTR saben qué llegó de verdad al canal y a la voz (la prueba
+            # del circuito de Implicación enciende los avisos solo si vuelve con texto Y voz).
+            try:
+                await self.fuente.acusar(acuses)
+            except Exception as e:               # noqa: BLE001 -- el acuse nunca frena el anuncio
+                log.warning(f"[FTDiscord] no se pudo mandar el acuse: {e}")
         self._hora.update(r)
         self.totales.update(r)
         return r

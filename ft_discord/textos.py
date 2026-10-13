@@ -601,6 +601,11 @@ def texto_implicacion(s: dict) -> str:
         f"🏆 **IMPLICACIÓN DE TORNEO**\n**{s.get('jugador1')}** vs {s.get('jugador2') or '—'}")
     if d.get("prueba"):
         return f"{cuerpo}\n_🧪 Prueba del circuito, no es una señal · #{s.get('id')}_"
+    if d.get("experimental") or d.get("aviso") == "experimental":
+        # v14: un experimental NUNCA se presenta como pick validado: marca arriba (la pone RankingFTR) y abajo.
+        if "EXPERIMENTAL" not in cuerpo.split("\n")[0].upper():
+            cuerpo = "🧪 **EXPERIMENTAL — EN ESTUDIO** · no es un pick validado\n" + cuerpo
+        return f"{cuerpo}\n_🧪 Experimental · en estudio · {d.get('regla') or 'IMP'} · señal #{s.get('id')}_"
     return f"{cuerpo}\n_🔴 En vivo · {d.get('regla') or 'IMP'} · señal #{s.get('id')}_"
 
 
@@ -614,6 +619,8 @@ def voz_implicacion(s: dict) -> str:
             frase = frase.replace(n, nombre_para_voz(n))
     if d.get("prueba") and frase and not frase.lower().startswith("prueba"):
         frase = f"Prueba del circuito. {frase}"
+    elif (d.get("experimental") or d.get("aviso") == "experimental") and frase and "experimental" not in frase.lower()[:60]:
+        frase = f"Señal experimental, en estudio. {frase}"
     return f"Atención FullTennis. {frase}" if frase else ""
 
 
