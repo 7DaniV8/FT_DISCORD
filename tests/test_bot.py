@@ -263,14 +263,15 @@ check("sin variables, dice qué falta", len(config.problemas()) == 3, "; ".join(
 # 07/10/2026: + CUOTA_MAL_PUESTA, texto y voz.
 # 08/10/2026: + RECORDADOR, texto y voz; + NEWS_VALOR (📰 FT NEWS 🔥), texto y voz.
 # 11/10/2026 (v12): + RECORDADOR_IA y RECORDADOR_VIVO, texto y voz.
-check("por defecto: alerta, Ventaja Leve, Pasan Filtro, MTO, Cuota Mal Puesta, Recordador (⏰, 🩹 IA, 🔴 vivo) y FT NEWS 🔥 por texto "
+# 13/10/2026 (v13): + IMPLICACION (🏆), texto y voz (la puerta real es IMP_DISCORD_ACTIVO en RankingFTR).
+check("por defecto: alerta, Ventaja Leve, Pasan Filtro, MTO, Cuota Mal Puesta, Recordador (⏰, 🩹 IA, 🔴 vivo), FT NEWS 🔥 e Implicación 🏆 por texto "
       "y voz; aprendizaje solo texto",
       config.TIPOS_TEXTO == {"REVISION_VOZ", "VENTAJA_LEVE", "PASAN_FILTRO", "MTO_VIVO", "APRENDIZAJE",
                              "CUOTA_MAL_PUESTA", "UTR_VALUE", "UTR_MARKET_ANOMALY", "RECORDADOR", "RECORDADOR_IA",
-                             "RECORDADOR_VIVO", "NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA"}
+                             "RECORDADOR_VIVO", "NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA", "IMPLICACION"}
       and config.TIPOS_VOZ == {"REVISION_VOZ", "VENTAJA_LEVE", "PASAN_FILTRO", "MTO_VIVO",
                                "CUOTA_MAL_PUESTA", "UTR_VALUE", "UTR_MARKET_ANOMALY", "RECORDADOR", "RECORDADOR_IA",
-                               "RECORDADOR_VIVO", "NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA"})
+                               "RECORDADOR_VIVO", "NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA", "IMPLICACION"})
 
 print("\n6. La ficha consolidada del motor de vigilancia")
 from ft_discord.textos import cuota_hablada  # noqa: E402

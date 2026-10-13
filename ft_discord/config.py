@@ -51,10 +51,17 @@ import os
 # vienen armados de RankingFTR v43 y se dicen en el acto. RankingFTR solo los
 # manda cuando Admin activa RECORDADOR_IA_DISCORD=1 (hasta entonces, el ⏰ de
 # siempre); acá se gobiernan en Admin → Discord → Avisos. Mismo OJO con Railway.
+# IMPLICACION (v13, 13/10/2026): 🏆 IMPLICACIÓN DE TORNEO, el favorito PRE que pierde el
+# primer set defendiendo puntos. Texto y voz vienen armados de RankingFTR v45 y se dicen en
+# el acto (el partido ya está en juego). Solo llegan picks de reglas VALIDADAS y solo con
+# IMP_DISCORD_ACTIVO = 1 en RankingFTR (apagado de fábrica); los 🧪 experimentales nunca
+# salen de RankingFTR. Las PRUEBAS del circuito llegan marcadas "🧪 PRUEBA DEL CIRCUITO".
+# Se gobierna en Admin → Discord → Estrategias. Mismo OJO con las variables de Railway.
 _TODOS = ("REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,APRENDIZAJE,CUOTA_MAL_PUESTA,"
-          "UTR_VALUE,UTR_MARKET_ANOMALY,RECORDADOR,RECORDADOR_IA,RECORDADOR_VIVO,NEWS_VALOR,NEWS_INTERESANTE,NEWS_NOTICIA")
+          "UTR_VALUE,UTR_MARKET_ANOMALY,RECORDADOR,RECORDADOR_IA,RECORDADOR_VIVO,NEWS_VALOR,NEWS_INTERESANTE,NEWS_NOTICIA,"
+          "IMPLICACION")
 _VOZ = ("REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,CUOTA_MAL_PUESTA,UTR_VALUE,UTR_MARKET_ANOMALY,"
-        "RECORDADOR,RECORDADOR_IA,RECORDADOR_VIVO,NEWS_VALOR,NEWS_INTERESANTE,NEWS_NOTICIA")
+        "RECORDADOR,RECORDADOR_IA,RECORDADOR_VIVO,NEWS_VALOR,NEWS_INTERESANTE,NEWS_NOTICIA,IMPLICACION")
 
 
 def _lista(nombre: str, defecto: str) -> set:

@@ -75,6 +75,10 @@ class Anunciador:
         # personalizado (Rubén: "mantener la etiqueta EXPERIMENTAL").
         if cab and texto and "EXPERIMENTAL" in texto.split("\n")[0].upper() and "EXPERIMENTAL" not in cab.upper():
             cab = ""
+        # v13: una PRUEBA del circuito (🏆 Implicación) tampoco pierde su marca: el
+        # encabezado no pisa la línea "🧪 PRUEBA DEL CIRCUITO".
+        if cab and texto and "PRUEBA" in texto.split("\n")[0].upper() and "PRUEBA" not in cab.upper():
+            cab = ""
         if cab and texto:
             lineas = texto.split("\n")
             lineas[0] = f"**{cab}**"

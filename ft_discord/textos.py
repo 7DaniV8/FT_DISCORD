@@ -19,10 +19,11 @@ from typing import Optional
 from zoneinfo import ZoneInfo
 
 EMOJI = {"REVISION_CUOTA": "📊", "PARTIDO_NUEVO": "🎾", "CARGA_EXTREMA": "🔋", "MTO_RECIENTE": "🩹", "CUOTA_LEJOS": "📊",
-         "RECORDATORIO": "⏳", "CAMBIO_HORA": "🕐", "RECORDADOR": "⏰", "RECORDADOR_IA": "🩹", "RECORDADOR_VIVO": "🔴"}
+         "RECORDATORIO": "⏳", "CAMBIO_HORA": "🕐", "RECORDADOR": "⏰", "RECORDADOR_IA": "🩹", "RECORDADOR_VIVO": "🔴",
+         "IMPLICACION": "🏆"}
 TITULO = {"REVISION_CUOTA": "REVISIÓN DE CUOTA", "REVISION_VOZ": "AVISO DE VOZ",
           "RADAR_VOZ": "FT MARKET ANOMALY", "MAESTRO_AVISO": "PARTIDO MAESTRO",
-          "MAESTRO_INICIO": "EMPEZÓ EL MAESTRO", "UNDER_PICK": "UNDER", "VENTAJA_LEVE": "VENTAJA LEVE", "PASAN_FILTRO": "PASAN FILTRO", "CUOTA_MAL_PUESTA": "CUOTA MAL PUESTA", "UTR_VALUE": "UTR VALUE", "NEWS_VALOR": "POSIBLE VALOR POR NOTICIAS", "NEWS_INTERESANTE": "PARTIDO INTERESANTE", "NEWS_NOTICIA": "NOTICIA IMPORTANTE", "UTR_MARKET_ANOMALY": "UTR MARKET ANOMALY", "RECORDADOR": "RECORDADOR", "RECORDADOR_IA": "RECORDATORIO IA", "RECORDADOR_VIVO": "PARTIDO EN VIVO", "PARTIDO_NUEVO": "NUEVO PARTIDO", "CARGA_EXTREMA": "CARGA EXTREMA", "MTO_RECIENTE": "MTO RECIENTE",
+          "MAESTRO_INICIO": "EMPEZÓ EL MAESTRO", "UNDER_PICK": "UNDER", "VENTAJA_LEVE": "VENTAJA LEVE", "PASAN_FILTRO": "PASAN FILTRO", "CUOTA_MAL_PUESTA": "CUOTA MAL PUESTA", "UTR_VALUE": "UTR VALUE", "NEWS_VALOR": "POSIBLE VALOR POR NOTICIAS", "NEWS_INTERESANTE": "PARTIDO INTERESANTE", "NEWS_NOTICIA": "NOTICIA IMPORTANTE", "UTR_MARKET_ANOMALY": "UTR MARKET ANOMALY", "RECORDADOR": "RECORDADOR", "RECORDADOR_IA": "RECORDATORIO IA", "RECORDADOR_VIVO": "PARTIDO EN VIVO", "IMPLICACION": "IMPLICACIÓN DE TORNEO", "PARTIDO_NUEVO": "NUEVO PARTIDO", "CARGA_EXTREMA": "CARGA EXTREMA", "MTO_RECIENTE": "MTO RECIENTE",
           "CUOTA_LEJOS": "CUOTA LEJOS DEL FTR", "RECORDATORIO": "PRÓXIMO PARTIDO",
           "CAMBIO_HORA": "CAMBIO DE HORA"}
 
@@ -590,6 +591,32 @@ def voz_recordador(s: dict) -> str:
     return frase
 
 
+def texto_implicacion(s: dict) -> str:
+    """🏆 IMPLICACIÓN DE TORNEO (v13, 13/10/2026). El texto lo arma RankingFTR v45 (favorito
+    PRE, UTR, set 1 perdido, cuota LIVE, puntos que defiende) y se publica TAL CUAL; acá solo
+    el pie. Una PRUEBA del circuito llega con su primera línea "🧪 PRUEBA DEL CIRCUITO" y el
+    pie lo repite: nunca puede leerse como una señal confirmada."""
+    d = s.get("datos") or {}
+    cuerpo = (d.get("texto_discord") or "").strip() or (
+        f"🏆 **IMPLICACIÓN DE TORNEO**\n**{s.get('jugador1')}** vs {s.get('jugador2') or '—'}")
+    if d.get("prueba"):
+        return f"{cuerpo}\n_🧪 Prueba del circuito, no es una señal · #{s.get('id')}_"
+    return f"{cuerpo}\n_🔴 En vivo · {d.get('regla') or 'IMP'} · señal #{s.get('id')}_"
+
+
+def voz_implicacion(s: dict) -> str:
+    """La frase de RankingFTR, con los nombres como se dicen. Una prueba empieza por
+    "Prueba del circuito" (lo pone RankingFTR; si faltara, se agrega acá)."""
+    d = s.get("datos") or {}
+    frase = (d.get("texto_voz") or "").strip()
+    for n in (d.get("jugador") or s.get("jugador1"), d.get("rival") or s.get("jugador2")):
+        if n and nombre_para_voz(n) != n:
+            frase = frase.replace(n, nombre_para_voz(n))
+    if d.get("prueba") and frase and not frase.lower().startswith("prueba"):
+        frase = f"Prueba del circuito. {frase}"
+    return f"Atención FullTennis. {frase}" if frase else ""
+
+
 def _es_en_vivo_anomalia(s: dict) -> bool:
     return ((s.get("datos") or {}).get("fase_activacion") or "").lower() == "vivo"
 
@@ -741,6 +768,8 @@ def _texto_canal_base(s: dict) -> str:
         return texto_anomalia(s)
     if tipo in RECORDADOR_TIPOS:                 # v12: ⏰ / 🩹 IA / 🔴 en vivo
         return texto_recordador(s)
+    if tipo == "IMPLICACION":                    # v13: 🏆 Implicación de Torneo, en el acto
+        return texto_implicacion(s)
     if tipo == "MAESTRO_AVISO":
         from ft_discord.config import ZONA_HORARIA
         return texto_maestro(s, ZONA_HORARIA)
@@ -823,6 +852,8 @@ def texto_voz(s: dict, zona: str, ahora: Optional[datetime] = None,
         return (f"{quien} {j1} contra {j2}. {frase}" if j1 and j2 else frase).strip()
     if tipo in RECORDADOR_TIPOS:                 # v12: ⏰ / 🩹 IA / 🔴 en vivo
         return voz_recordador(s)
+    if tipo == "IMPLICACION":                    # v13: 🏆 Implicación de Torneo
+        return voz_implicacion(s)
     if tipo in ("VENTAJA_LEVE", "PASAN_FILTRO"):
         # La frase viene armada de RankingFTR (VL01-VL05, o la regla
         # automática de Pasan Filtro), SIN el
