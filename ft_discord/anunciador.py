@@ -29,7 +29,8 @@ AGRUPABLES = ("PARTIDO_NUEVO", "RECORDATORIO")
 # v16 (13/10/2026, Rubén: "no quiero que aparezca como enviada una alerta que FT Discord no haya
 # confirmado"): también las tres de FT NEWS; FT Intelligence le reenvía el acuse a FT_NEWS.
 ACUSE_TIPOS = ("IMPLICACION", "NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA",
-               "UNDER_PICK")    # v17: ▼ el Under vuelve a RankingFTR con su acuse (llegó o por qué no)
+               "UNDER_PICK",    # v17: ▼ el Under vuelve a RankingFTR con su acuse (llegó o por qué no)
+               "MOVIMIENTO_RENTABLE")   # v17: 📉 ídem
 
 
 def en_silencio(rango: str, hora_local: int) -> bool:

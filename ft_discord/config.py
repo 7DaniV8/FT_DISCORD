@@ -59,11 +59,14 @@ import os
 # Se gobierna en Admin → Discord → Estrategias. Mismo OJO con las variables de Railway.
 # UNDER_PICK (v17, 14/10/2026, Rubén: «los Under deben sonar en Discord»): ▼ el Under que salió a Telegram, texto y
 # voz en el acto. Encendido de fábrica; se gobierna en Admin → Discord. Mismo OJO con las variables de Railway.
+# MOVIMIENTO_RENTABLE (v17, 14/10/2026): 📉 los que salieron a Telegram, como Cuota Mal Puesta / UTR VALUE (minutos
+# antes o al empezar). Mismo OJO con las variables de Railway.
 _TODOS = ("REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,APRENDIZAJE,CUOTA_MAL_PUESTA,"
           "UTR_VALUE,UTR_MARKET_ANOMALY,RECORDADOR,RECORDADOR_IA,RECORDADOR_VIVO,NEWS_VALOR,NEWS_INTERESANTE,NEWS_NOTICIA,"
-          "IMPLICACION,UNDER_PICK")
+          "IMPLICACION,UNDER_PICK,MOVIMIENTO_RENTABLE")
 _VOZ = ("REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,CUOTA_MAL_PUESTA,UTR_VALUE,UTR_MARKET_ANOMALY,"
-        "RECORDADOR,RECORDADOR_IA,RECORDADOR_VIVO,NEWS_VALOR,NEWS_INTERESANTE,NEWS_NOTICIA,IMPLICACION,UNDER_PICK")
+        "RECORDADOR,RECORDADOR_IA,RECORDADOR_VIVO,NEWS_VALOR,NEWS_INTERESANTE,NEWS_NOTICIA,IMPLICACION,UNDER_PICK,"
+        "MOVIMIENTO_RENTABLE")
 
 
 def _lista(nombre: str, defecto: str) -> set:

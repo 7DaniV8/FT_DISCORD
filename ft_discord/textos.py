@@ -23,7 +23,7 @@ EMOJI = {"REVISION_CUOTA": "📊", "PARTIDO_NUEVO": "🎾", "CARGA_EXTREMA": "�
          "IMPLICACION": "🏆"}
 TITULO = {"REVISION_CUOTA": "REVISIÓN DE CUOTA", "REVISION_VOZ": "AVISO DE VOZ",
           "RADAR_VOZ": "FT MARKET ANOMALY", "MAESTRO_AVISO": "PARTIDO MAESTRO",
-          "MAESTRO_INICIO": "EMPEZÓ EL MAESTRO", "UNDER_PICK": "UNDER", "VENTAJA_LEVE": "VENTAJA LEVE", "PASAN_FILTRO": "PASAN FILTRO", "CUOTA_MAL_PUESTA": "CUOTA MAL PUESTA", "UTR_VALUE": "UTR VALUE", "NEWS_VALOR": "POSIBLE VALOR POR NOTICIAS", "NEWS_INTERESANTE": "PARTIDO INTERESANTE", "NEWS_NOTICIA": "NOTICIA IMPORTANTE", "UTR_MARKET_ANOMALY": "UTR MARKET ANOMALY", "RECORDADOR": "RECORDADOR", "RECORDADOR_IA": "RECORDATORIO IA", "RECORDADOR_VIVO": "PARTIDO EN VIVO", "IMPLICACION": "IMPLICACIÓN DE TORNEO", "PARTIDO_NUEVO": "NUEVO PARTIDO", "CARGA_EXTREMA": "CARGA EXTREMA", "MTO_RECIENTE": "MTO RECIENTE",
+          "MAESTRO_INICIO": "EMPEZÓ EL MAESTRO", "UNDER_PICK": "UNDER", "MOVIMIENTO_RENTABLE": "MOVIMIENTO RENTABLE", "VENTAJA_LEVE": "VENTAJA LEVE", "PASAN_FILTRO": "PASAN FILTRO", "CUOTA_MAL_PUESTA": "CUOTA MAL PUESTA", "UTR_VALUE": "UTR VALUE", "NEWS_VALOR": "POSIBLE VALOR POR NOTICIAS", "NEWS_INTERESANTE": "PARTIDO INTERESANTE", "NEWS_NOTICIA": "NOTICIA IMPORTANTE", "UTR_MARKET_ANOMALY": "UTR MARKET ANOMALY", "RECORDADOR": "RECORDADOR", "RECORDADOR_IA": "RECORDATORIO IA", "RECORDADOR_VIVO": "PARTIDO EN VIVO", "IMPLICACION": "IMPLICACIÓN DE TORNEO", "PARTIDO_NUEVO": "NUEVO PARTIDO", "CARGA_EXTREMA": "CARGA EXTREMA", "MTO_RECIENTE": "MTO RECIENTE",
           "CUOTA_LEJOS": "CUOTA LEJOS DEL FTR", "RECORDATORIO": "PRÓXIMO PARTIDO",
           "CAMBIO_HORA": "CAMBIO DE HORA"}
 
@@ -786,9 +786,9 @@ def _texto_canal_base(s: dict) -> str:
         return texto_under(s)
     if tipo in ("VENTAJA_LEVE", "PASAN_FILTRO"):
         return texto_ventaja_leve(s)
-    if tipo in ("CUOTA_MAL_PUESTA", "UTR_VALUE"):
+    if tipo in ("CUOTA_MAL_PUESTA", "UTR_VALUE", "MOVIMIENTO_RENTABLE"):
         # 07/10/2026: el texto lo arma RankingFTR; acá, encabezado en negrita
-        # y el pie de "empezó el partido".
+        # y el pie de "empezó el partido". v17b (14/10/2026): + 📉 Movimiento Rentable, igual.
         return texto_al_empezar(s)
     if tipo in ("NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA"):
         return texto_news(s)
@@ -861,7 +861,7 @@ def texto_voz(s: dict, zona: str, ahora: Optional[datetime] = None,
         return voz_revision(s, zona, ahora)
     if tipo == "REVISION_VOZ":
         return voz_candidato(s, zona, ahora) if _es_candidato(d) else voz_aviso(s, zona, ahora)
-    if tipo in ("CUOTA_MAL_PUESTA", "UTR_VALUE"):
+    if tipo in ("CUOTA_MAL_PUESTA", "UTR_VALUE", "MOVIMIENTO_RENTABLE"):
         # 09/10/2026: suena minutos antes ("En nueve minutos, X contra Y") o,
         # si se lo vio empezar primero, "Empezó X contra Y". Después la frase
         # de RankingFTR tal cual.

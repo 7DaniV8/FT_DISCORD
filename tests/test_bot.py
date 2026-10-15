@@ -269,10 +269,12 @@ check("por defecto: alerta, Ventaja Leve, Pasan Filtro, MTO, Cuota Mal Puesta, R
       "y voz; aprendizaje solo texto",
       config.TIPOS_TEXTO == {"REVISION_VOZ", "VENTAJA_LEVE", "PASAN_FILTRO", "MTO_VIVO", "APRENDIZAJE",
                              "CUOTA_MAL_PUESTA", "UTR_VALUE", "UTR_MARKET_ANOMALY", "RECORDADOR", "RECORDADOR_IA",
-                             "RECORDADOR_VIVO", "NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA", "IMPLICACION", "UNDER_PICK"}
+                             "RECORDADOR_VIVO", "NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA", "IMPLICACION", "UNDER_PICK",
+                             "MOVIMIENTO_RENTABLE"}
       and config.TIPOS_VOZ == {"REVISION_VOZ", "VENTAJA_LEVE", "PASAN_FILTRO", "MTO_VIVO",
                                "CUOTA_MAL_PUESTA", "UTR_VALUE", "UTR_MARKET_ANOMALY", "RECORDADOR", "RECORDADOR_IA",
-                               "RECORDADOR_VIVO", "NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA", "IMPLICACION", "UNDER_PICK"})
+                               "RECORDADOR_VIVO", "NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA", "IMPLICACION", "UNDER_PICK",
+                               "MOVIMIENTO_RENTABLE"})
 
 print("\n6. La ficha consolidada del motor de vigilancia")
 from ft_discord.textos import cuota_hablada  # noqa: E402
@@ -398,6 +400,14 @@ check("v17 · voz del Under: quién juega, la línea y la cuota (sin iniciales s
       _vu == "Atención FullTennis. Under en vivo. Bairo contra Neimanis. Under diecisiete y medio, cuota uno punto setenta y dos.", _vu)
 check("v17 · el Under pide acuse y está encendido de fábrica (texto y voz)",
       "UNDER_PICK" in ACUSE_TIPOS and "UNDER_PICK" in _cfg_d._TODOS and "UNDER_PICK" in _cfg_d._VOZ)
+_mov = {"id": 77, "tipo": "MOVIMIENTO_RENTABLE", "jugador1": "Lia Belibova", "jugador2": "Milana Maslenkova",
+        "datos": {"momento": "ANTES", "minutos": 9, "detectado_en": "2026-09-22T12:00:00+00:00",
+                  "texto_discord": "📉 MOVIMIENTO RENTABLE | CONFIRMADO POR ELO\n\n🎾 ⭐ __**Lia Belibova**__ vs Milana Maslenkova",
+                  "texto_voz": "Movimiento Rentable a favor de Belibova. La cuota bajó de dos punto diecisiete a uno punto noventa."}}
+check("v17 · 📉 Movimiento Rentable como Cuota Mal Puesta / UTR VALUE: el texto de RankingFTR, pie de minutos antes, voz con el cuándo",
+      texto_canal(_mov).startswith("**📉 MOVIMIENTO RENTABLE | CONFIRMADO POR ELO**") and "EMPIEZA EN ~9 MIN" in texto_canal(_mov)
+      and texto_voz(_mov, "UTC", _ahora).startswith("En nueve minutos, Lia Belibova contra Milana Maslenkova. Movimiento Rentable")
+      and "MOVIMIENTO_RENTABLE" in ACUSE_TIPOS, texto_voz(_mov, "UTC", _ahora))
 radar["datos"]["decision"] = {"etiqueta": "🔥 VALOR CONFIRMADO"}
 radar["datos"]["diagnostico"] = {
     "señalado": "J2", "rival": "J1", "precio": {"mercado_pct": 16, "modelos_pct": [70, 73], "anomalia_pp": 54},

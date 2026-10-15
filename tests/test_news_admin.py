@@ -123,7 +123,7 @@ async def escenario():
 
     print("\n3 · Los demás tipos no cambian")
     check("acuse para Implicación, las tres de FT NEWS y (v17) el Under",
-          set(ACUSE_TIPOS) == {"IMPLICACION", "NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA", "UNDER_PICK"})
+          set(ACUSE_TIPOS) == {"IMPLICACION", "NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA", "UNDER_PICK", "MOVIMIENTO_RENTABLE"})
     check("sin DISCORD_CANAL_ADMIN_ID el canal de admin queda en 0", config.CANAL_ADMIN_ID == 0)
 
 
