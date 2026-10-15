@@ -264,14 +264,15 @@ check("sin variables, dice qué falta", len(config.problemas()) == 3, "; ".join(
 # 08/10/2026: + RECORDADOR, texto y voz; + NEWS_VALOR (📰 FT NEWS 🔥), texto y voz.
 # 11/10/2026 (v12): + RECORDADOR_IA y RECORDADOR_VIVO, texto y voz.
 # 13/10/2026 (v13): + IMPLICACION (🏆), texto y voz (la puerta real es IMP_DISCORD_ACTIVO en RankingFTR).
+# 14/10/2026 (v17): + UNDER_PICK (▼), texto y voz.
 check("por defecto: alerta, Ventaja Leve, Pasan Filtro, MTO, Cuota Mal Puesta, Recordador (⏰, 🩹 IA, 🔴 vivo), FT NEWS 🔥 e Implicación 🏆 por texto "
       "y voz; aprendizaje solo texto",
       config.TIPOS_TEXTO == {"REVISION_VOZ", "VENTAJA_LEVE", "PASAN_FILTRO", "MTO_VIVO", "APRENDIZAJE",
                              "CUOTA_MAL_PUESTA", "UTR_VALUE", "UTR_MARKET_ANOMALY", "RECORDADOR", "RECORDADOR_IA",
-                             "RECORDADOR_VIVO", "NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA", "IMPLICACION"}
+                             "RECORDADOR_VIVO", "NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA", "IMPLICACION", "UNDER_PICK"}
       and config.TIPOS_VOZ == {"REVISION_VOZ", "VENTAJA_LEVE", "PASAN_FILTRO", "MTO_VIVO",
                                "CUOTA_MAL_PUESTA", "UTR_VALUE", "UTR_MARKET_ANOMALY", "RECORDADOR", "RECORDADOR_IA",
-                               "RECORDADOR_VIVO", "NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA", "IMPLICACION"})
+                               "RECORDADOR_VIVO", "NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA", "IMPLICACION", "UNDER_PICK"})
 
 print("\n6. La ficha consolidada del motor de vigilancia")
 from ft_discord.textos import cuota_hablada  # noqa: E402
@@ -383,12 +384,20 @@ check("Pasan Filtro: mismo tratamiento que Ventaja Leve",
       and texto_voz(pfs, "UTC", _ahora) == pfs["datos"]["texto_voz"])
 cu = texto_canal(under)
 check("el UNDER muestra su contexto, la muestra chica y la piedra",
-      "FULLTENNIS — UNDER" in cu and "Línea 18.5 · UNDER @1.78" in cu
+      "FULLTENNIS · UNDER EN VIVO" in cu and "Línea 18.5 · UNDER @1.78" in cu
       and "4-6 UNDER (40%) · n=10 ⚠️ muestra pequeña" in cu
       and "🪨 Piedra histórica: cuota UNDER 1.85-1.89" in cu, cu)
 check("y sin historial no inventa porcentajes",
       "sin historial suficiente" in texto_canal({**under, "datos": {"linea": 18.5, "cuota": 1.78,
                                                                     "contexto": {}}}))
+# v17 (14/10/2026): el Under tiene voz (antes solo «Atención FullTennis.») y vuelve con acuse
+from ft_discord.anunciador import ACUSE_TIPOS  # noqa: E402
+from ft_discord import config as _cfg_d  # noqa: E402
+_vu = texto_voz({**under, "jugador1": "Bairo D", "jugador2": "Neimanis R", "datos": {"linea": 17.5, "cuota": 1.72}}, "UTC", _ahora)
+check("v17 · voz del Under: quién juega, la línea y la cuota (sin iniciales sueltas)",
+      _vu == "Atención FullTennis. Under en vivo. Bairo contra Neimanis. Under diecisiete y medio, cuota uno punto setenta y dos.", _vu)
+check("v17 · el Under pide acuse y está encendido de fábrica (texto y voz)",
+      "UNDER_PICK" in ACUSE_TIPOS and "UNDER_PICK" in _cfg_d._TODOS and "UNDER_PICK" in _cfg_d._VOZ)
 radar["datos"]["decision"] = {"etiqueta": "🔥 VALOR CONFIRMADO"}
 radar["datos"]["diagnostico"] = {
     "señalado": "J2", "rival": "J1", "precio": {"mercado_pct": 16, "modelos_pct": [70, 73], "anomalia_pp": 54},

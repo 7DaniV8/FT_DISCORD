@@ -122,7 +122,8 @@ async def escenario():
     await fuente.cerrar()
 
     print("\n3 · Los demás tipos no cambian")
-    check("acuse solo para Implicación y las tres de FT NEWS", set(ACUSE_TIPOS) == {"IMPLICACION", "NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA"})
+    check("acuse para Implicación, las tres de FT NEWS y (v17) el Under",
+          set(ACUSE_TIPOS) == {"IMPLICACION", "NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA", "UNDER_PICK"})
     check("sin DISCORD_CANAL_ADMIN_ID el canal de admin queda en 0", config.CANAL_ADMIN_ID == 0)
 
 

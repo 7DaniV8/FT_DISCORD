@@ -57,11 +57,13 @@ import os
 # IMP_DISCORD_ACTIVO = 1 en RankingFTR (apagado de fábrica); los 🧪 experimentales nunca
 # salen de RankingFTR. Las PRUEBAS del circuito llegan marcadas "🧪 PRUEBA DEL CIRCUITO".
 # Se gobierna en Admin → Discord → Estrategias. Mismo OJO con las variables de Railway.
+# UNDER_PICK (v17, 14/10/2026, Rubén: «los Under deben sonar en Discord»): ▼ el Under que salió a Telegram, texto y
+# voz en el acto. Encendido de fábrica; se gobierna en Admin → Discord. Mismo OJO con las variables de Railway.
 _TODOS = ("REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,APRENDIZAJE,CUOTA_MAL_PUESTA,"
           "UTR_VALUE,UTR_MARKET_ANOMALY,RECORDADOR,RECORDADOR_IA,RECORDADOR_VIVO,NEWS_VALOR,NEWS_INTERESANTE,NEWS_NOTICIA,"
-          "IMPLICACION")
+          "IMPLICACION,UNDER_PICK")
 _VOZ = ("REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,CUOTA_MAL_PUESTA,UTR_VALUE,UTR_MARKET_ANOMALY,"
-        "RECORDADOR,RECORDADOR_IA,RECORDADOR_VIVO,NEWS_VALOR,NEWS_INTERESANTE,NEWS_NOTICIA,IMPLICACION")
+        "RECORDADOR,RECORDADOR_IA,RECORDADOR_VIVO,NEWS_VALOR,NEWS_INTERESANTE,NEWS_NOTICIA,IMPLICACION,UNDER_PICK")
 
 
 def _lista(nombre: str, defecto: str) -> set:

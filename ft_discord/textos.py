@@ -155,6 +155,21 @@ def cuota_hablada(c: Optional[float]) -> str:
                                               else numero(int(dec)))
 
 
+def linea_hablada(v) -> str:
+    """17.5 -> 'diecisiete y medio'; 18 -> 'dieciocho'; sin línea -> ''."""
+    try:
+        x = float(v)
+    except (TypeError, ValueError):
+        return ""
+    entero = int(x)
+    resto = round(x - entero, 2)
+    if resto == 0:
+        return numero(entero)
+    if resto == 0.5:
+        return f"{numero(entero)} y medio"
+    return f"{x:g}"
+
+
 def _ddmm(fecha: str) -> str:
     return f"{fecha[8:10]}/{fecha[5:7]}"
 
@@ -460,9 +475,10 @@ def texto_under(s: dict) -> str:
     d = s.get("datos") or {}
     c = d.get("contexto") or {}
     sim, linea, piedra = (c.get("similares") or {}), (c.get("linea") or {}), c.get("piedra")
-    lineas = ["🎾 **FULLTENNIS — UNDER**", "",
-              f"{s.get('jugador1')} vs {s.get('jugador2')}",
-              f"Línea {d.get('linea')} · UNDER @{d.get('cuota')}", "",
+    torneo = d.get("torneo") or s.get("torneo")
+    lineas = ["▼ **FULLTENNIS · UNDER EN VIVO**", "",
+              f"🎾 {s.get('jugador1')} vs {s.get('jugador2')}"] + ([f"🏆 {torneo}"] if torneo else []) + [
+              f"📉 Línea {d.get('linea')} · UNDER @{d.get('cuota')}", "",
               "📊 **Contexto FT**", f"Similares: {_tasa(sim)}"]
     if linea.get("n"):
         lineas.append(f"Línea {linea.get('valor')}: {linea['under']}-{linea['over']} ({linea['pct']}%)")
@@ -872,6 +888,14 @@ def texto_voz(s: dict, zona: str, ahora: Optional[datetime] = None,
         # "Atención FullTennis" del resto: el pedido la quiere corta y
         # empezando por "Ventaja Leve". No lee Elo, FTR, muestra ni cuota.
         return (d.get("texto_voz") or "").strip()
+    if tipo == "UNDER_PICK":
+        # v17 (14/10/2026, Rubén: «los Under deben sonar en Discord»): antes no había frase para el Under y la voz
+        # decía solo «Atención FullTennis.». Corta: quién juega, la línea y la cuota.
+        j1, j2 = nombre_para_voz(s.get("jugador1")), nombre_para_voz(s.get("jugador2"))
+        linea = linea_hablada(d.get("linea"))
+        cuota = f", cuota {cuota_hablada(float(d['cuota']))}" if d.get("cuota") else ""
+        return (f"Atención FullTennis. Under en vivo. {j1} contra {j2}. "
+                + (f"Under {linea}{cuota}." if linea else f"Under{cuota}.")).strip()
     if tipo == "MAESTRO_INICIO":
         cual = "el Maestro Top" if (d.get("es_top")) else "el Partido Maestro"
         fav = f" Favorito: {d['favorito']}." if d.get("favorito") else ""

@@ -182,7 +182,9 @@ reportar(fx(204, "Doble Alto", "Doble Bajo", 4.50, 1.25, "Doble Alto", 0.66))
 for j1, j2, ev in (("Biro M", "Beviz L", 301), ("Gana M", "Pierde L", 302)):
     ua.observar(conn, "pinnacle", j1, j2, 1.50, 2.45, en_vivo=False, ahora=AHORA - timedelta(hours=1),
                 genero="M", torneo="ITF M25 Prueba", event_id=ev)
-M00 = {"games": 0, "sets": 0, "texto": "0-0", "en": AHORA.isoformat(), "inicio": AHORA.isoformat(),
+# v17 (14/10/2026): el marcador lleva la hora REAL de este momento (no la del arranque del test): con la máquina lenta,
+# lo de arriba tardaba más que UTRA_VIVO_MARCADOR_MAX_SEG y la anomalía quedaba ESPERANDO_MARCADOR («marcador viejo»).
+M00 = {"games": 0, "sets": 0, "texto": "0-0", "en": datetime.now(timezone.utc).isoformat(), "inicio": AHORA.isoformat(),
        "fuente": "partidos_en_vivo", "stream": False}
 ua.observar(conn, "pinnacle", "Biro M", "Beviz L", 1.17, 4.20, en_vivo=True, genero="M", event_id=301,
             torneo="ITF M25 Prueba", marcador=M00)
@@ -209,7 +211,7 @@ check("UTR VALUE +1.00 @1.60: no (cuota baja), guardada", uvr[203]["motivo"] == 
 check("UTR VALUE +0.80 @4.50: publicada", uvr[204]["motivo"] == "ENVIADO_DISCORD")
 an = {r["jugador_a"]: dict(r) for r in q("SELECT * FROM utr_anomalia_registro")}
 check("ANOMALY +0.31 PRE 2.45 → EN VIVO 0-0 @4.20: publicada en vivo",
-      an["Beviz L"]["motivo"] == "ENVIADO_DISCORD" and an["Beviz L"]["fase_activacion"] == "vivo")
+      an["Beviz L"]["motivo"] == "ENVIADO_DISCORD" and an["Beviz L"]["fase_activacion"] == "vivo", (an["Beviz L"]["motivo"], an["Beviz L"].get("revision_estado")))
 check("ANOMALY +0.31 PRE 2.45 → EN VIVO 0-3 @4.20: estudio, sin Discord",
       an["Pierde L"]["motivo"] == "ESTUDIO_VIVO_MARCADOR_AVANZADO" and an["Pierde L"]["discord_sent"] == 0)
 check("el partido +0.80 @4.50: la anomalía se guarda pero no avisa (prioridad UTR VALUE)",
@@ -319,8 +321,8 @@ check("📈 UTR VALUE +0.80 @4.50 llega (y nada más de ese partido)",
       sum(1 for k in por_jug if "Doble Alto" in por_jug[k][0]) == 1
       and any(k[0] == "UTR_VALUE" and "Doble Alto" in por_jug[k][0] for k in por_jug))
 check("🚨 ANOMALY 0-0 @4.20 llega 'En vivo' con el marcador",
-      any(k[0] == "UTR_MARKET_ANOMALY" and "marcador 0-0" in por_jug[k][0]
-          and por_jug[k][1].startswith("En vivo,") for k in por_jug))
+      any(k[0] == "UTR_MARKET_ANOMALY" and "Marcador: 0-0" in por_jug[k][0]      # formato actual: «🔴 Marcador: 0-0»
+          and por_jug[k][1].startswith("En vivo,") for k in por_jug), [v for k, v in por_jug.items() if k[0] == "UTR_MARKET_ANOMALY"])
 check("lo descartado NO llega: 59/35, 61/53, +0.70, +1.00 @1.60, anomalía 0-3",
       not any(n in por_jug[k][0] for k in por_jug for n in ("Cmp Uno", "Cmp Cinco", "Corto Alto",
                                                               "Barato Alto", "Pierde L")))
