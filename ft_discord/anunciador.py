@@ -30,7 +30,8 @@ AGRUPABLES = ("PARTIDO_NUEVO", "RECORDATORIO")
 # confirmado"): también las tres de FT NEWS; FT Intelligence le reenvía el acuse a FT_NEWS.
 ACUSE_TIPOS = ("IMPLICACION", "NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA",
                "UNDER_PICK",    # v17: ▼ el Under vuelve a RankingFTR con su acuse (llegó o por qué no)
-               "MOVIMIENTO_RENTABLE")   # v17: 📉 ídem
+               "MOVIMIENTO_RENTABLE",   # v17: 📉 ídem
+               "UNDER_UTR")             # v19: 🔥 UNDER UTR, ídem
 
 
 def en_silencio(rango: str, hora_local: int) -> bool:

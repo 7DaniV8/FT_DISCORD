@@ -23,7 +23,7 @@ EMOJI = {"REVISION_CUOTA": "📊", "PARTIDO_NUEVO": "🎾", "CARGA_EXTREMA": "�
          "IMPLICACION": "🏆"}
 TITULO = {"REVISION_CUOTA": "REVISIÓN DE CUOTA", "REVISION_VOZ": "AVISO DE VOZ",
           "RADAR_VOZ": "FT MARKET ANOMALY", "MAESTRO_AVISO": "PARTIDO MAESTRO",
-          "MAESTRO_INICIO": "EMPEZÓ EL MAESTRO", "UNDER_PICK": "UNDER", "MOVIMIENTO_RENTABLE": "MOVIMIENTO RENTABLE", "VENTAJA_LEVE": "VENTAJA LEVE", "PASAN_FILTRO": "PASAN FILTRO", "CUOTA_MAL_PUESTA": "CUOTA MAL PUESTA", "UTR_VALUE": "UTR VALUE", "NEWS_VALOR": "POSIBLE VALOR POR NOTICIAS", "NEWS_INTERESANTE": "PARTIDO INTERESANTE", "NEWS_NOTICIA": "NOTICIA IMPORTANTE", "UTR_MARKET_ANOMALY": "UTR MARKET ANOMALY", "RECORDADOR": "RECORDADOR", "RECORDADOR_IA": "RECORDATORIO IA", "RECORDADOR_VIVO": "PARTIDO EN VIVO", "IMPLICACION": "IMPLICACIÓN DE TORNEO", "PARTIDO_NUEVO": "NUEVO PARTIDO", "CARGA_EXTREMA": "CARGA EXTREMA", "MTO_RECIENTE": "MTO RECIENTE",
+          "MAESTRO_INICIO": "EMPEZÓ EL MAESTRO", "UNDER_PICK": "UNDER", "MOVIMIENTO_RENTABLE": "MOVIMIENTO RENTABLE", "UNDER_UTR": "UNDER UTR", "VENTAJA_LEVE": "VENTAJA LEVE", "PASAN_FILTRO": "PASAN FILTRO", "CUOTA_MAL_PUESTA": "CUOTA MAL PUESTA", "UTR_VALUE": "UTR VALUE", "NEWS_VALOR": "POSIBLE VALOR POR NOTICIAS", "NEWS_INTERESANTE": "PARTIDO INTERESANTE", "NEWS_NOTICIA": "NOTICIA IMPORTANTE", "UTR_MARKET_ANOMALY": "UTR MARKET ANOMALY", "RECORDADOR": "RECORDADOR", "RECORDADOR_IA": "RECORDATORIO IA", "RECORDADOR_VIVO": "PARTIDO EN VIVO", "IMPLICACION": "IMPLICACIÓN DE TORNEO", "PARTIDO_NUEVO": "NUEVO PARTIDO", "CARGA_EXTREMA": "CARGA EXTREMA", "MTO_RECIENTE": "MTO RECIENTE",
           "CUOTA_LEJOS": "CUOTA LEJOS DEL FTR", "RECORDATORIO": "PRÓXIMO PARTIDO",
           "CAMBIO_HORA": "CAMBIO DE HORA"}
 
@@ -492,6 +492,31 @@ def texto_under(s: dict) -> str:
     return "\n".join(lineas)
 
 
+def texto_under_utr(s: dict) -> str:
+    """🔥 UNDER UTR (v19, 15/10/2026). El texto lo arma RankingFTR con el formato del pedido de Rubén y se publica TAL
+    CUAL (encabezado en negrita). Solo pre-partido (RankingFTR v54i): sale en el acto, sin pie de hora."""
+    d = s.get("datos") or {}
+    texto = (d.get("texto_discord") or "").strip()
+    if not texto:
+        texto = (f"🔥 FULLTENNIS · UNDER UTR\n🎾 {s.get('jugador1')} vs {s.get('jugador2')}\n"
+                 f"🎯 UNDER {d.get('linea')}\n💰 Cuota: {d.get('cuota')}")
+    lineas = texto.split("\n")
+    lineas[0] = f"**{lineas[0].strip('*')}**"
+    return "\n".join(lineas)
+
+
+def voz_under_utr(s: dict) -> str:
+    """«Atención FullTennis. Antes de empezar, A contra B. Under UTR. Diferencia de UTR, uno punto ochenta y cinco. Under
+    dieciocho y medio, cuota uno punto setenta y seis.» La frase viene de RankingFTR."""
+    d = s.get("datos") or {}
+    frase = (d.get("texto_voz") or "").strip()
+    if not frase:
+        linea = linea_hablada(d.get("linea"))
+        frase = f"Under UTR. Under {linea}." if linea else "Under UTR."
+    j1, j2 = nombre_para_voz(s.get("jugador1")), nombre_para_voz(s.get("jugador2"))
+    return (f"Atención FullTennis. Antes de empezar, {j1} contra {j2}. {frase}" if j1 and j2 else f"Atención FullTennis. {frase}")
+
+
 def texto_maestro(s: dict, zona: str = "UTC") -> str:
     """⭐ El aviso de un Partido Maestro: quién, contra quién, torneo y hora
     programada. Sin análisis: es un recordatorio."""
@@ -784,6 +809,8 @@ def _texto_canal_base(s: dict) -> str:
         return texto_radar(s)
     if tipo == "UNDER_PICK":
         return texto_under(s)
+    if tipo == "UNDER_UTR":                      # v19: 🔥 el texto lo arma RankingFTR (formato del pedido), tal cual
+        return texto_under_utr(s)
     if tipo in ("VENTAJA_LEVE", "PASAN_FILTRO"):
         return texto_ventaja_leve(s)
     if tipo in ("CUOTA_MAL_PUESTA", "UTR_VALUE", "MOVIMIENTO_RENTABLE"):
@@ -888,6 +915,8 @@ def texto_voz(s: dict, zona: str, ahora: Optional[datetime] = None,
         # "Atención FullTennis" del resto: el pedido la quiere corta y
         # empezando por "Ventaja Leve". No lee Elo, FTR, muestra ni cuota.
         return (d.get("texto_voz") or "").strip()
+    if tipo == "UNDER_UTR":
+        return voz_under_utr(s)
     if tipo == "UNDER_PICK":
         # v17 (14/10/2026, Rubén: «los Under deben sonar en Discord»): antes no había frase para el Under y la voz
         # decía solo «Atención FullTennis.». Corta: quién juega, la línea y la cuota.

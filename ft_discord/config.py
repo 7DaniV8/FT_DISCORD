@@ -61,12 +61,15 @@ import os
 # voz en el acto. Encendido de fábrica; se gobierna en Admin → Discord. Mismo OJO con las variables de Railway.
 # MOVIMIENTO_RENTABLE (v17, 14/10/2026): 📉 los que salieron a Telegram, como Cuota Mal Puesta / UTR VALUE (minutos
 # antes o al empezar). Mismo OJO con las variables de Railway.
+# UNDER_UTR (v19, 15/10/2026, Rubén: «cuando las condiciones se cumplan, quiero que pueda mandar la señal a Discord»):
+# 🔥 UNDER UTR de RankingFTR v54i, texto (formato del pedido) y voz en el acto, con acuse. Encendido de fábrica; se
+# gobierna en Admin → Discord. Mismo OJO con las variables de Railway.
 _TODOS = ("REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,APRENDIZAJE,CUOTA_MAL_PUESTA,"
           "UTR_VALUE,UTR_MARKET_ANOMALY,RECORDADOR,RECORDADOR_IA,RECORDADOR_VIVO,NEWS_VALOR,NEWS_INTERESANTE,NEWS_NOTICIA,"
-          "IMPLICACION,UNDER_PICK,MOVIMIENTO_RENTABLE")
+          "IMPLICACION,UNDER_PICK,MOVIMIENTO_RENTABLE,UNDER_UTR")
 _VOZ = ("REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,CUOTA_MAL_PUESTA,UTR_VALUE,UTR_MARKET_ANOMALY,"
         "RECORDADOR,RECORDADOR_IA,RECORDADOR_VIVO,NEWS_VALOR,NEWS_INTERESANTE,NEWS_NOTICIA,IMPLICACION,UNDER_PICK,"
-        "MOVIMIENTO_RENTABLE")
+        "MOVIMIENTO_RENTABLE,UNDER_UTR")
 
 
 def _lista(nombre: str, defecto: str) -> set:

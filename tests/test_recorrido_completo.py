@@ -155,6 +155,9 @@ def reportar(f):
                  "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                  (f["fixture_id"], f["fecha"], f["torneo"], f["superficie"], f["genero"], f["jugador1"], f["jugador2"], f["odd1"], f["odd2"],
                   f["ftr1"], f["ftr2"], f["elo1"], f["elo2"], 1, f["prob_ftr"], f["prob_elo"], f["favorito_nombre"], AHORA.isoformat()))
+    # 15/10/2026: se confirma antes de llamar a los motores. Sin esto la prueba se quedaba colgada: la primera lectura
+    # de Admin → Estrategias abre OTRA conexión y crea su tabla, y esta transacción abierta la bloqueaba.
+    conn.commit()
     uv.registrar(conn, f)
     cmp.registrar(conn, f)
     ua.observar(conn, f["fuente"], f["jugador1"], f["jugador2"], f["odd1"], f["odd2"], en_vivo=False,

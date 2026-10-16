@@ -270,11 +270,11 @@ check("por defecto: alerta, Ventaja Leve, Pasan Filtro, MTO, Cuota Mal Puesta, R
       config.TIPOS_TEXTO == {"REVISION_VOZ", "VENTAJA_LEVE", "PASAN_FILTRO", "MTO_VIVO", "APRENDIZAJE",
                              "CUOTA_MAL_PUESTA", "UTR_VALUE", "UTR_MARKET_ANOMALY", "RECORDADOR", "RECORDADOR_IA",
                              "RECORDADOR_VIVO", "NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA", "IMPLICACION", "UNDER_PICK",
-                             "MOVIMIENTO_RENTABLE"}
+                             "MOVIMIENTO_RENTABLE", "UNDER_UTR"}
       and config.TIPOS_VOZ == {"REVISION_VOZ", "VENTAJA_LEVE", "PASAN_FILTRO", "MTO_VIVO",
                                "CUOTA_MAL_PUESTA", "UTR_VALUE", "UTR_MARKET_ANOMALY", "RECORDADOR", "RECORDADOR_IA",
                                "RECORDADOR_VIVO", "NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA", "IMPLICACION", "UNDER_PICK",
-                               "MOVIMIENTO_RENTABLE"})
+                               "MOVIMIENTO_RENTABLE", "UNDER_UTR"})
 
 print("\n6. La ficha consolidada del motor de vigilancia")
 from ft_discord.textos import cuota_hablada  # noqa: E402
@@ -408,6 +408,22 @@ check("v17 · 📉 Movimiento Rentable como Cuota Mal Puesta / UTR VALUE: el tex
       texto_canal(_mov).startswith("**📉 MOVIMIENTO RENTABLE | CONFIRMADO POR ELO**") and "EMPIEZA EN ~9 MIN" in texto_canal(_mov)
       and texto_voz(_mov, "UTC", _ahora).startswith("En nueve minutos, Lia Belibova contra Milana Maslenkova. Movimiento Rentable")
       and "MOVIMIENTO_RENTABLE" in ACUSE_TIPOS, texto_voz(_mov, "UTC", _ahora))
+# v19 (15/10/2026): 🔥 UNDER UTR — el texto de RankingFTR tal cual (formato del pedido), voz en vivo, con acuse.
+_uutr = {"id": 88, "tipo": "UNDER_UTR", "jugador1": "Carlos Alto", "jugador2": "Diego Bajo",
+         "datos": {"texto_discord": "🔥 FULLTENNIS · UNDER UTR\n🎾 Carlos Alto vs Diego Bajo\n📊 UTR: 12.40 vs 10.55\n"
+                                    "🔥 ΔUTR: 1.85\n🎯 UNDER 18.5\n💰 Cuota: 1.76\n📍 Marcador: 0-0 · ⏱️ sin empezar\n✅ CUMPLE FILTRO UTR",
+                   "texto_voz": "Under UTR. Diferencia de UTR, uno punto ochenta y cinco. Under dieciocho y medio, cuota uno punto setenta y seis.",
+                   "linea": 18.5, "cuota": 1.76}}
+_tu = texto_canal(_uutr)
+check("v19 · 🔥 UNDER UTR: el texto del pedido tal cual, encabezado en negrita, sin ⭐ inventado",
+      _tu.split("\n")[0] == "**🔥 FULLTENNIS · UNDER UTR**" and "🎯 UNDER 18.5" in _tu and "📍 Marcador: 0-0 · ⏱️ sin empezar" in _tu
+      and "✅ CUMPLE FILTRO UTR" in _tu and "⭐" not in _tu, _tu)
+_vz = texto_voz(_uutr, "UTC", _ahora)
+check("v19 · 🔥 UNDER UTR: voz «antes de empezar» con los dos jugadores y la frase de RankingFTR",
+      _vz == "Atención FullTennis. Antes de empezar, Carlos Alto contra Diego Bajo. Under UTR. Diferencia de UTR, uno punto ochenta y cinco. "
+             "Under dieciocho y medio, cuota uno punto setenta y seis.", _vz)
+check("v19 · 🔥 UNDER UTR pide acuse y está encendido de fábrica (texto y voz)",
+      "UNDER_UTR" in ACUSE_TIPOS and "UNDER_UTR" in _cfg_d._TODOS and "UNDER_UTR" in _cfg_d._VOZ)
 radar["datos"]["decision"] = {"etiqueta": "🔥 VALOR CONFIRMADO"}
 radar["datos"]["diagnostico"] = {
     "señalado": "J2", "rival": "J1", "precio": {"mercado_pct": 16, "modelos_pct": [70, 73], "anomalia_pp": 54},
