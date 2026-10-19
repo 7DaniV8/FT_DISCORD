@@ -58,6 +58,9 @@ os.environ.update({
     # V2 (08/10/2026 tarde): la regla de confirmación (≥ 1 factor favorable)
     # también es un control aparte; se apaga por el mismo motivo.
     "CMP_FACTORES_POSITIVOS_MIN": "0",
+    # 🔥 19/10/2026: la regla de publicación OPOSICIÓN (la de fábrica) también es un control aparte; con la de
+    # factores y mínimo 0 no hay confirmación, como antes. La nueva se prueba en RankingFTR (test_cmp_oposicion.py).
+    "CMP_REGLA_PUBLICACION": "factores",
 })
 
 ok = fallas = 0

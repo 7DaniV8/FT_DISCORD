@@ -395,6 +395,8 @@ check("y sin historial no inventa porcentajes",
 # v17 (14/10/2026): el Under tiene voz (antes solo «Atención FullTennis.») y vuelve con acuse
 from ft_discord.anunciador import ACUSE_TIPOS  # noqa: E402
 from ft_discord import config as _cfg_d  # noqa: E402
+import ft_discord.textos as _tx_pie  # noqa: E402
+_tx_pie.PIE_CORTO = False   # ✂️ v20: esta prueba revisa el pie ANTERIOR (FT_DISCORD_PIE_CORTO=0); el corto: tests/test_horarios_pie.py
 _vu = texto_voz({**under, "jugador1": "Bairo D", "jugador2": "Neimanis R", "datos": {"linea": 17.5, "cuota": 1.72}}, "UTC", _ahora)
 check("v17 · voz del Under: quién juega, la línea y la cuota (sin iniciales sueltas)",
       _vu == "Atención FullTennis. Under en vivo. Bairo contra Neimanis. Under diecisiete y medio, cuota uno punto setenta y dos.", _vu)

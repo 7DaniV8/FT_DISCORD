@@ -21,6 +21,8 @@ for k in ("FT_DISCORD_TIPOS_TEXTO", "FT_DISCORD_TIPOS_VOZ"):
 
 from ft_discord import config  # noqa: E402
 from ft_discord.textos import texto_canal, texto_voz  # noqa: E402
+import ft_discord.textos as _tx_pie  # noqa: E402
+_tx_pie.PIE_CORTO = False   # ✂️ v20: esta prueba revisa el pie ANTERIOR (FT_DISCORD_PIE_CORTO=0); el corto: tests/test_horarios_pie.py
 
 ok = fallas = 0
 

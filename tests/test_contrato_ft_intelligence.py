@@ -153,7 +153,8 @@ if _cmp is not None:
     sc = [x for x in senales if x["tipo"] == "CUOTA_MAL_PUESTA"]
     check("cuota mal puesta: al empezar, el bot la lee y la escribe con el pie de inicio",
           len(sc) == 1 and texto_canal(sc[0]).startswith("**💎 FULLTENIS · CUOTA MUY MAL PUESTA**")
-          and "EN JUEGO" in texto_canal(sc[0]), texto_canal(sc[0]) if sc else "")
+          and ("▶️ Ya empezó." in texto_canal(sc[0]) or "EN JUEGO" in texto_canal(sc[0])),   # v20: pie corto o el anterior
+          texto_canal(sc[0]) if sc else "")
     check("cuota mal puesta: la voz dice qué empezó y la frase de RankingFTR",
           sc and texto_voz(sc[0], "UTC", ahora) ==
           "Empezó Jugador Tres contra Jugador Dos. Cuota muy mal puesta. Jugador Tres.",

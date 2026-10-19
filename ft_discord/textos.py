@@ -12,6 +12,8 @@ debería pasar de unos 15 segundos hablada.
 """
 from __future__ import annotations
 
+import os
+
 import json
 import re
 from datetime import date, datetime, timezone
@@ -580,6 +582,18 @@ def texto_al_empezar(s: dict) -> str:
     no de ahora."""
     d = s.get("datos") or {}
     lineas = texto_ventaja_leve(s).split("\n")
+    cambio = _linea_cambio_hora(d)
+    # v20 (19/10/2026, Rubén: «que todos los mensajes que llegan a Discord sean más cortos»): pie corto
+    # «⏳ Empieza en aproximadamente 10 minutos.» / «▶️ Ya empezó.», sin «Detectada hace…».
+    # FT_DISCORD_PIE_CORTO=0 vuelve al pie anterior.
+    if PIE_CORTO:
+        if d.get("momento") == "ANTES":
+            m = d.get("minutos")
+            pie = ("⏳ Empieza en aproximadamente 1 minuto." if m == 1
+                   else f"⏳ Empieza en aproximadamente {m} minutos." if m else "⏳ Empieza en unos minutos.")
+        else:
+            pie = "▶️ Ya empezó."
+        return "\n".join(lineas + ([cambio] if cambio else []) + [pie])
     # 09/10/2026 (Rubén: "siempre deben sonar minutos antes de que empiece el
     # juego"): FT Intelligence manda momento=ANTES y los minutos que faltan;
     # si lo vio empezar primero, EN JUEGO. Pie: "⏳ EMPIEZA EN ~9 MIN ·
@@ -594,7 +608,26 @@ def texto_al_empezar(s: dict) -> str:
         pie += f" · Detectada <t:{ts}:R>"
     except (KeyError, TypeError, ValueError):
         pass
-    return "\n".join(lineas + ["", pie])
+    return "\n".join(lineas + [""] + ([cambio] if cambio else []) + [pie])
+
+
+PIE_CORTO = os.getenv("FT_DISCORD_PIE_CORTO", "1").strip() != "0"
+
+
+def _linea_cambio_hora(d: dict) -> str:
+    """v20 (19/10/2026, Rubén: «la programación se retrasa»): si FT Intelligence avisa que el partido cambió de hora,
+    «🕒 Cambió de hora: era 10:00, ahora 13:00» (Discord muestra cada hora en la zona de quien lo lee). Si no, ''."""
+    vieja, nueva = d.get("fecha_partido_original"), d.get("fecha_partido")
+    if not vieja or not nueva or vieja == nueva:
+        return ""
+    try:
+        tv, tn = int(_utc(vieja).timestamp()), int(_utc(nueva).timestamp())
+    except (TypeError, ValueError):
+        return ""
+    if abs(tn - tv) < 5 * 60:
+        return ""
+    verbo = "se retrasó" if tn > tv else "se adelantó"
+    return f"🕒 El partido {verbo}: era <t:{tv}:t>, ahora <t:{tn}:t>"
 
 
 texto_cuota_mal_puesta = texto_al_empezar     # nombre anterior (07/10/2026)
