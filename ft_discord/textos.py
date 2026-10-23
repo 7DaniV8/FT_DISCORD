@@ -734,6 +734,17 @@ def nombre_para_voz(nombre: Optional[str]) -> str:
     return limpio or n
 
 
+def _favorito_palabra(d: dict) -> str:
+    return "favorita" if str(d.get("genero") or "").upper().startswith(("F", "W")) else "favorito"
+
+
+def _cuota_txt(v) -> str:
+    try:
+        return f"{float(v):.2f}"
+    except (TypeError, ValueError):
+        return str(v)
+
+
 def texto_mto_vivo(s: dict) -> str:
     d = s.get("datos") or {}
     rival = d.get("rival")
@@ -741,8 +752,21 @@ def texto_mto_vivo(s: dict) -> str:
     if d.get("torneo"):
         linea2 += f" · {d['torneo']}"
     texto = f"🩹 **TIEMPO MÉDICO** — solicitado por **{d.get('jugador')}**\n{linea2}"
+    if d.get("cuota_pre_jugador") and d.get("cuota_pre_rival"):
+        # 22/10/2026 (Rubén): las cuotas PRE-PARTIDO, para saber quién era el favorito
+        # formato de Rubén: una línea por jugador; la ⭐ de la línea del partido ya marca al favorito
+        texto += (f"\n📊 Pre-partido:\n• {d.get('jugador')} **{_cuota_txt(d['cuota_pre_jugador'])}**"
+                  f"\n• {rival} **{_cuota_txt(d['cuota_pre_rival'])}**")
     if d.get("cuota_rival"):
         texto += f"\n💲 Cuota del rival: **{d['cuota_rival']}**"
+    if d.get("momento_mto") == "entre_puntos" and d.get("momento_mto_texto"):
+        # 22/10/2026 (Rubén: «saber si fue entre puntos» → «no, solo si es entre puntos»): la línea sale SOLO cuando lo
+        # pidió en medio de un game o del tie-break. Cambio de lado, fin de set o entre games: no se dice nada.
+        texto += f"\n🩹 {d['momento_mto_texto']}"
+    if d.get("mto_previos"):
+        # 22/10/2026 (Rubén): cuántos MTO pidió en las últimas semanas y hace cuántos días el último (lo arma FT
+        # Intelligence con nuestro historial y lo que dice el aviso): «2 MTO en las últimas 4 semanas · el último hace 3 días»
+        texto += f"\n🕒 {d['mto_previos']}"
     if d.get("tiene_video"):
         texto += "\n📺 **Con video**"
     return texto
@@ -771,6 +795,9 @@ def favorito_de(s: dict) -> Optional[str]:
     d = s.get("datos") or {}
     if d.get("favorito"):
         return d["favorito"]
+    if s.get("tipo") == "MTO_VIVO" and d.get("favorito_pre") in ("jugador", "rival"):
+        # 22/10/2026: en el MTO, el favorito es el de las cuotas PRE-PARTIDO (antes: la cuota en vivo al momento del MTO)
+        return d.get("jugador") if d["favorito_pre"] == "jugador" else d.get("rival")
     foto = s.get("foto") or {}
     fx = foto.get("fixture") or foto.get("maestro") or {}
     j1 = fx.get("jugador1") or s.get("jugador1")
@@ -907,14 +934,17 @@ def texto_voz(s: dict, zona: str, ahora: Optional[datetime] = None,
               con_probabilidades: bool = True) -> str:
     tipo, d = s["tipo"], s.get("datos") or {}
     if tipo == "MTO_VIVO":
-        # La frase exacta del pedido (24/09/2026).
+        # 22/10/2026 (Rubén: «quiero que el bot solo lea una pequeña parte del mensaje: tiempo médico solicitado por
+        # tal, la cuota del rival y si lo pidió entre puntos» + «también que diga si es partido con video»). La voz dice
+        # SOLO eso; las cuotas pre-partido y los MTO anteriores quedan en el texto del canal.
         frase = f"Atención FullTennis. Tiempo médico solicitado por {nombre_para_voz(d.get('jugador'))}."
         if d.get("cuota_rival"):
-            # 24/09/2026: "Rival con cuota 2.97" (la cuota en vivo del rival
-            # al momento del MTO). Si la fuente no la trajo, no se dice.
+            # 24/09/2026: "Rival con cuota 2.97" (la cuota en vivo del rival al momento del MTO). Sin dato, no se dice.
             frase += f" Rival con cuota {d['cuota_rival']}."
+        if d.get("momento_mto") == "entre_puntos":
+            frase += " Lo pidió entre puntos."
         if d.get("tiene_video"):
-            # 24/09/2026: el aviso de Telegram trae 📺 = el partido tiene video.
+            # 24/09/2026 (y de nuevo 22/10): el aviso de Telegram trae 📺 = el partido tiene video.
             frase += " Partido con video."
         return frase
     if tipo == "REVISION_CUOTA":

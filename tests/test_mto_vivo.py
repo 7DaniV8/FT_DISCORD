@@ -37,6 +37,64 @@ check("con video lo dice al final",
 check("y el texto lo muestra", "📺 **Con video**" in texto_canal(s3))
 check("sin video no dice nada de video", "video" not in v2)
 
+# 22/10/2026: MTO anteriores (cuántos en 4 semanas y hace cuántos días), en texto y en voz
+s4 = {**s, "datos": {**s2["datos"], "mto_previos": "**2 MTO** en las últimas 4 semanas · el último **hace 3 días**",
+                     "mto_previos_voz": "Pidió 2 tiempos médicos en las últimas 4 semanas, el último hace 3 días."}}
+check("texto: 🕒 2 MTO en 4 semanas · el último hace 3 días",
+      "🕒 **2 MTO** en las últimas 4 semanas · el último **hace 3 días**" in texto_canal(s4), texto_canal(s4))
+v4 = texto_voz(s4, "UTC")
+check("voz: los MTO anteriores NO se leen (solo en el texto)",
+      v4 == "Atención FullTennis. Tiempo médico solicitado por Kovacs. Rival con cuota 2.97.", v4)
+s5 = {**s, "datos": {**s["datos"], "mto_previos": "Último MTO **hace 194 días**",
+                     "mto_previos_voz": "Su último tiempo médico fue hace 194 días."}}
+check("solo días (sin fecha)", "🕒 Último MTO **hace 194 días**" in texto_canal(s5)
+      and "194" not in texto_voz(s5, "UTC") and "/" not in texto_canal(s5).split("🕒")[1])
+check("sin el dato, nada cambia", "🕒" not in texto_canal(s) and "tiempos médicos" not in texto_voz(s, "UTC"))
+
+# 22/10/2026: cuotas pre-partido y la favorita
+s6 = {**s, "datos": {**s2["datos"], "genero": "F", "cuota_pre_jugador": 1.65, "cuota_pre_rival": 2.2,
+                     "favorito_pre": "jugador"}}
+c6 = texto_canal(s6)
+check("texto: 📊 Pre-partido, una línea por jugadora (formato de Rubén)",
+      "📊 Pre-partido:\n• Kovacs L **1.65**\n• Sziklai E **2.20**" in c6, c6)
+check("la estrella ⭐ marca a la favorita PRE-PARTIDO en la línea del partido", "⭐ __**Kovacs L**__" in c6, c6)
+v6 = texto_voz(s6, "UTC")
+check("voz: las cuotas pre-partido NO se leen (solo en el texto)",
+      v6 == "Atención FullTennis. Tiempo médico solicitado por Kovacs. Rival con cuota 2.97.", v6)
+s7 = {**s, "datos": {**s["datos"], "genero": "M", "cuota_pre_jugador": 3.5, "cuota_pre_rival": 1.3,
+                     "favorito_pre": "rival"}}
+check("si el favorito era el rival: la ⭐ lo marca", "⭐ __**Sziklai E**__" in texto_canal(s7), texto_canal(s7))
+check("sin cuotas pre-partido, nada cambia", "Pre-partido" not in texto_canal(s) and "Antes del partido" not in texto_voz(s, "UTC"))
+
+# 22/10/2026: el mensaje completo con el formato de Rubén; 🩹 momento SOLO si fue entre puntos
+s8 = {**s, "jugador1": "Michiru Furuya", "jugador2": "Junri Namigata",
+      "datos": {"jugador": "Michiru Furuya", "rival": "Junri Namigata", "torneo": "UTR Pro W. Saitama", "genero": "F",
+                "cuota_pre_jugador": 1.65, "cuota_pre_rival": 2.2, "favorito_pre": "jugador", "cuota_rival": "1.98",
+                "momento_mto": "entre_puntos", "momento_mto_texto": "Lo pidió **entre puntos** (game 15-30)",
+                "momento_mto_voz": "Lo pidió entre puntos, en medio de un game.",
+                "mto_previos": "**1 MTO** en las últimas 4 semanas (**hace 3 días**)",
+                "mto_previos_voz": "Pidió 1 tiempo médico en las últimas 4 semanas, hace 3 días."}}
+c8 = texto_canal(s8)
+check("entre puntos: partido · pre-partido · cuota del rival · 🩹 entre puntos · 🕒 MTO previos", c8 == "\n".join([
+    "🩹 **TIEMPO MÉDICO** — solicitado por **Michiru Furuya**",
+    "🎾 ⭐ __**Michiru Furuya**__ vs Junri Namigata · UTR Pro W. Saitama",
+    "📊 Pre-partido:", "• Michiru Furuya **1.65**", "• Junri Namigata **2.20**",
+    "💲 Cuota del rival: **1.98**",
+    "🩹 Lo pidió **entre puntos** (game 15-30)",
+    "🕒 **1 MTO** en las últimas 4 semanas (**hace 3 días**)"]), c8)
+check("voz corta: solo quién lo pidió, la cuota del rival y que fue entre puntos",
+      texto_voz(s8, "UTC") == "Atención FullTennis. Tiempo médico solicitado por Michiru Furuya. Rival con cuota 1.98. "
+      "Lo pidió entre puntos.", texto_voz(s8, "UTC"))
+s10 = {**s8, "datos": {**s8["datos"], "tiene_video": True}}
+check("voz corta con video: quién · cuota del rival · entre puntos · video",
+      texto_voz(s10, "UTC") == "Atención FullTennis. Tiempo médico solicitado por Michiru Furuya. Rival con cuota 1.98. "
+      "Lo pidió entre puntos. Partido con video.", texto_voz(s10, "UTC"))
+for clave, txt in (("fin_set", "Lo pidió **al terminar el set**"), ("cambio_lado", "Lo pidió **en el cambio de lado**"),
+                   ("entre_games", "Lo pidió **entre games, sin cambio de lado**")):
+    s9 = {**s8, "datos": {**s8["datos"], "momento_mto": clave, "momento_mto_texto": txt, "momento_mto_voz": "Lo pidió x."}}
+    check(f"{clave}: no se dice nada (ni texto ni voz)", "Lo pidió" not in texto_canal(s9)
+          and "Lo pidió" not in texto_voz(s9, "UTC"), texto_canal(s9))
+
 # Velocidad rechazada por la voz (Chirp 3 HD): reintenta sin velocidad.
 import httpx  # noqa: E402
 from ft_discord.tts import TTSGoogle  # noqa: E402
