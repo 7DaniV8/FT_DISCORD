@@ -1,142 +1,138 @@
 """
-tests/test_discord_config.py — 📣 Admin → Discord (08/10/2026): la configuración
-que decide RankingFTR llega vía FT Intelligence y el bot la aplica antes de
-escribir o hablar. Sin red: FT Intelligence es un MockTransport.
-"""
-from __future__ import annotations
+tests/test_discord_config.py — 📣 Admin → Discord (08/10/2026, Rubén: "activar,
+desactivar y modificar todo lo que llega a Discord"). Base DESECHABLE:
 
-import asyncio
+    /opt/venv/bin/python /app/tests/test_discord_config.py
+"""
 import os
+import sqlite3
 import sys
-from datetime import datetime, timezone
+import tempfile
 from pathlib import Path
 
-import httpx
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-os.environ.setdefault("DISCORD_TOKEN", "x")
-os.environ.setdefault("FT_INTEL_URL", "https://ft-intel.test")
-os.environ.setdefault("FTR_INTERNAL_SECRET", "secreto")
+_tmp = tempfile.mkdtemp()
+_DB = os.path.join(_tmp, "dc.db")
+os.environ["FTR_DB_PATH"] = _DB
+os.environ["DB_PATH"] = _DB
+os.environ.setdefault("ADMIN_TOKEN", "prueba")
+os.environ.setdefault("RESEARCH_TOKEN", "prueba")
+os.environ["FTR_INTERNAL_SECRET"] = "secreto-interno-prueba"
+os.environ.setdefault("RAPIDAPI_KEY", "x")
+os.environ["FULLTENIS_ELO_DB_PATH"] = os.path.join(_tmp, "no_existe_elo.sqlite")
 
-from ft_discord.anunciador import Anunciador  # noqa: E402
-from ft_discord.fuente import Fuente  # noqa: E402
-
-_ok, _fallos = 0, []
+fallos = []
 
 
-def check(nombre, cond, det=""):
-    global _ok
+def check(nombre, cond, detalle=""):
     if cond:
-        _ok += 1
-        print(f"  OK    {nombre}")
+        print(f"  OK   {nombre}")
     else:
-        _fallos.append(nombre)
-        print(f"  FALLA {nombre}" + (f": {det}" if det else ""))
+        print(f"  FALLA {nombre} — {detalle}")
+        fallos.append(nombre)
 
 
-AHORA = datetime(2026, 10, 8, 20, 0, tzinfo=timezone.utc)
-SENALES: list = []
-CONFIG: dict = {"estado": 404}
+from production.database.schema import SCHEMA  # noqa: E402
+_c = sqlite3.connect(_DB)
+_c.executescript(SCHEMA)
+_c.commit()
+_c.close()
+import production.api.deps as deps  # noqa: E402
 
 
-def senal(i, tipo):
-    return {"id": i, "tipo": tipo, "creado_en": AHORA.isoformat(), "resumen": f"{tipo} #{i}",
-            "jugador1": "Ana Uno", "jugador2": "Bea Dos", "torneo": "W15 X", "fecha_partido": AHORA.isoformat(),
-            "hora_conocida": 1, "datos": {"texto_discord": "💎 FULLTENIS · CUOTA MUY MAL PUESTA\n🎾 ⭐ __**Ana Uno**__ vs Bea Dos\n🚨 EDGE +20 PP",
-                                          "texto_voz": "Cuota muy mal puesta. Ana Uno.", "detectado_en": AHORA.isoformat(),
-                                          "jugador": "Ana Uno", "rival": "Bea Dos"}}
+def _get_conn():
+    c = sqlite3.connect(_DB)
+    c.row_factory = sqlite3.Row
+    return c
 
 
-def ft_intel(req: httpx.Request) -> httpx.Response:
-    if req.url.path == "/discord-config":
-        if CONFIG["estado"] != 200:
-            return httpx.Response(CONFIG["estado"], json={"detail": "sin configuración"})
-        return httpx.Response(200, json=CONFIG["cuerpo"])
-    desde = int(req.url.params["desde_id"])
-    return httpx.Response(200, json={"senales": [s for s in SENALES if s["id"] > desde],
-                                     "ultimo_id": max([s["id"] for s in SENALES] or [0])})
+deps.get_conn = _get_conn
+import production.api.routes_public as rp  # noqa: E402
+rp.get_conn = _get_conn
+from production.engines import discord_config as dc  # noqa: E402
+
+conn = _get_conn()
+print("=== 1 · Catálogo y defaults ===")
+l = dc.listar(conn)
+tipos = {t["tipo"]: t for t in l["tipos"]}
+check("23 tipos, todos los que FT Discord sabe anunciar (08/10: + 3 de FT NEWS; 11/10: + RECORDADOR_IA y RECORDADOR_VIVO; 13/10: + IMPLICACION; 15/10: + MOVIMIENTO_RENTABLE; v54i: + UNDER_UTR; 30/10: + 2 de FT PROBABILIDAD)", len(tipos) == 23 and "PROB_CANDIDATO" in tipos and "PROB_CANDIDATO_INICIO" in tipos and "UNDER_UTR" in tipos and "MOVIMIENTO_RENTABLE" in tipos and "IMPLICACION" in tipos and "NEWS_VALOR" in tipos and "CUOTA_MAL_PUESTA" in tipos and "MTO_VIVO" in tipos)
+check("defaults = lo que hoy suena: CMP texto+voz; APRENDIZAJE solo texto; MAESTRO_AVISO apagado",
+      tipos["CUOTA_MAL_PUESTA"]["texto"] == 1 and tipos["CUOTA_MAL_PUESTA"]["voz"] == 1
+      and tipos["APRENDIZAJE"]["voz"] == 0 and tipos["MAESTRO_AVISO"]["texto"] == 0)
+check("sin pausa de fábrica", l["pausa"] == 0)
+check("09/10 23:13: las tres de FT NEWS encendidas de fábrica (texto y voz), encabezado FULLTENNIS",
+      all(tipos[t]["texto"] == 1 and tipos[t]["voz"] == 1 for t in ("NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA"))
+      and tipos["NEWS_VALOR"]["encabezado_default"].startswith("🔥 FULLTENNIS") and tipos["NEWS_VALOR"]["encabezado"] == "")
+f = dc.para_discord(conn)
+check("el feed trae TODOS los tipos con valor efectivo, sin nada guardado todavía",
+      len(f["tipos"]) == 23 and f["tipos"]["RECORDADOR"] == {"texto": True, "voz": True, "encabezado": None, "voz_inicio": None}
+      and f["pausa"] is False)
+
+print("\n=== 2 · Guardar, restablecer, pausar ===")
+l = dc.guardar(conn, "CUOTA_MAL_PUESTA", None, False, "🔥 FULLTENIS PREMIUM · CUOTA MAL PUESTA", "Atención FullTennis", "dani@gmail.com")
+t = {x["tipo"]: x for x in l["tipos"]}["CUOTA_MAL_PUESTA"]
+check("apagar la voz sin tocar el texto; encabezado y frase guardados; quién y cuándo",
+      t["texto"] == 1 and t["voz"] == 0 and t["encabezado"].startswith("🔥 FULLTENIS PREMIUM") and t["voz_inicio"] == "Atención FullTennis"
+      and t["actualizado_por"] == "dani@gmail.com" and t["personalizado"], t)
+l = dc.guardar(conn, "CUOTA_MAL_PUESTA", False, None, None, None, "dani@gmail.com")
+t = {x["tipo"]: x for x in l["tipos"]}["CUOTA_MAL_PUESTA"]
+check("apagar el texto conserva lo demás", t["texto"] == 0 and t["voz"] == 0 and t["voz_inicio"] == "Atención FullTennis")
+l = dc.guardar(conn, "CUOTA_MAL_PUESTA", True, True, "", "", "dani@gmail.com")
+t = {x["tipo"]: x for x in l["tipos"]}["CUOTA_MAL_PUESTA"]
+check("vaciar encabezado/frase = volver a 'como viene'", t["encabezado"] == "" and t["voz_inicio"] == "" and t["texto"] == 1)
+l = dc.guardar(conn, "MAESTRO_AVISO", True, True, None, None, "dani@gmail.com")
+check("encender un tipo hoy apagado (Maestro aviso)", {x["tipo"]: x for x in l["tipos"]}["MAESTRO_AVISO"]["texto"] == 1)
+l = dc.restablecer(conn, "MAESTRO_AVISO")
+check("restablecer vuelve a fábrica", {x["tipo"]: x for x in l["tipos"]}["MAESTRO_AVISO"]["texto"] == 0
+      and not {x["tipo"]: x for x in l["tipos"]}["MAESTRO_AVISO"]["personalizado"])
+for em, vi in (("x" * 121, None), (None, "y" * 201)):
+    try:
+        dc.guardar(conn, "RECORDADOR", None, None, em, vi, "x")
+        check("rechaza textos demasiado largos", False)
+    except ValueError:
+        check("rechaza textos demasiado largos", True)
+try:
+    dc.guardar(conn, "NO_EXISTE", True, True, None, None, "x")
+    check("tipo desconocido → error", False)
+except ValueError:
+    check("tipo desconocido → error", True)
+l = dc.pausar(conn, True, "dani@gmail.com")
+check("pausa general", l["pausa"] == 1 and l["pausa_por"] == "dani@gmail.com" and dc.para_discord(conn)["pausa"] is True)
+l = dc.pausar(conn, False, "dani@gmail.com")
+check("reanudar", l["pausa"] == 0 and dc.para_discord(conn)["pausa"] is False)
+
+print("\n=== 3 · API ===")
+from production.api.auth import crear_usuario  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+from production.api.app import app  # noqa: E402
+crear_usuario(conn, "admin.dc.ftr@gmail.com", "Clave-Larga-123!", nombre="Admin Prueba", rol="admin")
+crear_usuario(conn, "lector.dc.ftr@gmail.com", "Clave-Larga-123!", nombre="Lector Prueba", rol="lectura")
+conn.commit()
 
 
-publicados, dichos = [], []
+def cliente(u):
+    c = TestClient(app, base_url="https://testserver")
+    assert c.post("/auth/login", json={"usuario": u, "password": "Clave-Larga-123!"}).status_code == 200
+    return c
 
 
-async def publicar(t):
-    publicados.append(t)
+ca, cl = cliente("admin.dc.ftr@gmail.com"), cliente("lector.dc.ftr@gmail.com")
+r = ca.get("/admin/discord/config")
+check("GET /admin/discord/config (admin)", r.status_code == 200 and len(r.json()["tipos"]) == 23, r.text[:120])
+check("lectura no puede (403)", cl.get("/admin/discord/config").status_code == 403
+      and cl.post("/admin/discord/config", json={"tipo": "RECORDADOR", "voz": False}).status_code == 403)
+r = ca.post("/admin/discord/config", json={"tipo": "RECORDADOR", "voz": False, "encabezado": "⏰ RECORDADOR FULLTENIS"})
+check("POST guarda y devuelve la lista", r.status_code == 200 and {t["tipo"]: t for t in r.json()["tipos"]}["RECORDADOR"]["voz"] == 0)
+check("POST pausa", ca.post("/admin/discord/config", json={"pausa": True}).json()["pausa"] == 1)
+check("POST tipo inválido → 400", ca.post("/admin/discord/config", json={"tipo": "ZZZ", "voz": True}).status_code == 400)
+ff = TestClient(app, base_url="https://testserver").get("/ft-intel/discord-config", headers={"X-FTR-Internal-Secret": "secreto-interno-prueba"})
+check("GET /ft-intel/discord-config con el secreto: pausa y RECORDADOR voz=false, encabezado",
+      ff.status_code == 200 and ff.json()["pausa"] is True and ff.json()["tipos"]["RECORDADOR"]["voz"] is False
+      and ff.json()["tipos"]["RECORDADOR"]["encabezado"] == "⏰ RECORDADOR FULLTENIS", ff.text[:200])
+check("sin secreto → 401/403", TestClient(app, base_url="https://testserver").get("/ft-intel/discord-config").status_code in (401, 403))
+h = ca.get("/admin/").text if ca.get("/admin/").status_code == 200 else ca.get("/admin").text
+check("el panel de Admin tiene la pestaña Discord", 'id="t-discord"' in h and 'id="vista-discord"' in h and "dc-pausa" in h)
 
-
-def encolar(t):
-    dichos.append(t)
-    return True
-
-
-async def escenario():
-    fuente = Fuente("https://ft-intel.test", "secreto", transport=httpx.MockTransport(ft_intel))
-    # Railway: CUOTA_MAL_PUESTA por texto y voz; RECORDADOR solo texto; MTO_VIVO nada.
-    a = Anunciador(fuente, publicar, encolar, "UTC", {"CUOTA_MAL_PUESTA", "RECORDADOR"},
-                   {"CUOTA_MAL_PUESTA"}, 30, reloj=lambda: AHORA)
-    await a.arrancar(0)
-
-    print("1 · Sin configuración remota (404): mandan las variables de Railway")
-    SENALES.append(senal(1, "CUOTA_MAL_PUESTA"))
-    r = await a.ciclo()
-    check("sin /discord-config el bot sigue igual: texto y voz", r["texto"] == 1 and r["voz"] == 1 and a.config_remota is None, r)
-    check("el encabezado es el de RankingFTR, sin tocar", publicados[-1].startswith("**💎 FULLTENIS · CUOTA MUY MAL PUESTA**"), publicados[-1])
-
-    print("\n2 · Admin apaga la voz de Cuota Mal Puesta y enciende MTO en vivo")
-    CONFIG.update(estado=200, cuerpo={"version": 1, "pausa": False, "tipos": {
-        "CUOTA_MAL_PUESTA": {"texto": True, "voz": False, "encabezado": None, "voz_inicio": None},
-        "MTO_VIVO": {"texto": True, "voz": True, "encabezado": None, "voz_inicio": None},
-        "RECORDADOR": {"texto": False, "voz": False, "encabezado": None, "voz_inicio": None}}})
-    SENALES.append(senal(2, "CUOTA_MAL_PUESTA"))
-    SENALES.append({**senal(3, "MTO_VIVO"), "datos": {"jugador_mto": "Ana Uno", "rival": "Bea Dos", "texto_discord": "x", "texto_voz": "x"}})
-    SENALES.append(senal(4, "RECORDADOR"))
-    n_t, n_v = len(publicados), len(dichos)
-    r = await a.ciclo()
-    check("Cuota Mal Puesta: texto sí, voz no (Admin manda sobre Railway)",
-          r["texto"] >= 1 and len(dichos) - n_v == 1, (r, len(dichos) - n_v))
-    check("MTO en vivo: encendido desde Admin aunque Railway no lo tenía (texto y voz)",
-          len(publicados) - n_t == 2 and any("Tiempo médico" in d for d in dichos[n_v:]), (len(publicados) - n_t, dichos[n_v:]))
-    check("Recordador apagado desde Admin: no sale, cuenta como apagada", r["apagadas"] == 1, r)
-
-    print("\n3 · Encabezado y frase de voz personalizados")
-    CONFIG["cuerpo"]["tipos"]["CUOTA_MAL_PUESTA"] = {"texto": True, "voz": True, "encabezado": "🔥 FULLTENIS PREMIUM · CUOTA MAL PUESTA",
-                                                     "voz_inicio": "Atención FullTennis"}
-    SENALES.append(senal(5, "CUOTA_MAL_PUESTA"))
-    await a.ciclo()
-    check("la primera línea del mensaje es el encabezado de Admin, en negrita",
-          publicados[-1].split("\n")[0] == "**🔥 FULLTENIS PREMIUM · CUOTA MAL PUESTA**", publicados[-1].split("\n")[0])
-    check("el resto del mensaje queda igual", "🚨 EDGE +20 PP" in publicados[-1])
-    check("la voz arranca con la frase de Admin", dichos[-1].startswith("Atención FullTennis. "), dichos[-1])
-
-    print("\n4 · Pausa general")
-    CONFIG["cuerpo"]["pausa"] = True
-    SENALES.append(senal(6, "CUOTA_MAL_PUESTA"))
-    n_t, n_v = len(publicados), len(dichos)
-    r = await a.ciclo()
-    check("en pausa no sale nada (ni texto ni voz)", len(publicados) == n_t and len(dichos) == n_v and r["apagadas"] == 1, r)
-    CONFIG["cuerpo"]["pausa"] = False
-    SENALES.append(senal(7, "CUOTA_MAL_PUESTA"))
-    r = await a.ciclo()
-    check("al reanudar, las nuevas salen; la que llegó en pausa no se repite", len(publicados) == n_t + 1, r)
-
-    print("\n5 · FT Intelligence deja de responder la configuración")
-    CONFIG["estado"] = 500
-    SENALES.append(senal(8, "RECORDADOR"))
-    r = await a.ciclo()
-    check("se conserva la última configuración buena (Recordador sigue apagado)", r["apagadas"] == 1 and a.config_remota is not None, r)
-
-    print("\n6 · Un tipo que Admin no conoce sigue con Railway")
-    CONFIG.update(estado=200)
-    CONFIG["cuerpo"]["tipos"].pop("RECORDADOR")
-    SENALES.append(senal(9, "RECORDADOR"))
-    n_t = len(publicados)
-    r = await a.ciclo()
-    check("Recordador no está en la configuración → Railway (solo texto)", len(publicados) == n_t + 1 and r["voz"] == 0, r)
-
-
-asyncio.run(escenario())
-print(f"\n{'─' * 60}")
-if _fallos:
-    print(f"{_ok} OK, {len(_fallos)} FALLAS: {_fallos}")
-    sys.exit(1)
-print(f"{_ok} comprobaciones OK.")
+print()
+print("TODO OK" if not fallos else f"FALLARON {len(fallos)}: {fallos}")
+sys.exit(1 if fallos else 0)

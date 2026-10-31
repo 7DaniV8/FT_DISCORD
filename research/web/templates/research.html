@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- Web App instalable (01/08/2026).
+
+       Sin estas etiquetas, iOS no reconoce el sitio como app: al
+       "Añadir a pantalla de inicio" crea un simple atajo que abre Safari
+       con su barra de direcciones. Había que añadirlo DOS veces -- una
+       desde Safari y otra desde ese atajo -- para que quedara instalado
+       de verdad.
+
+       Y sin instalación real no hay notificaciones: Safari solo permite
+       push a las apps instaladas (iOS 16.4+). O sea que este archivo no
+       es cosmético, es lo que hace que el push funcione en iPhone. -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FullTennis">
+  <meta name="theme-color" content="#0a0d0b">
+  <link rel="apple-touch-icon" href="/static/img/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/static/img/icon-192.png">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FullTennis — Ranking &amp; Research</title>
+<!-- Inter (30/07/2026). Si el link no carga -- red cortada, dominio
+     bloqueado -- la página no se rompe: el font-family de research.css
+     sigue con la del sistema (SF Pro en Apple, Segoe UI Variable en
+     Windows). display=swap para que el texto se vea desde el primer
+     frame y no quede en blanco esperando la fuente. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,800&family=Inter:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="/research/static/css/research.css?v=20260817a">
+<script src="/static/js/sesion_pestana.js?v=20260729a"></script>
+</head>
+<body>
+<div id="toast-container"></div>
+<script>window.FTR_PERMISOS = {{ permisos_json|safe }}; window.FTR_USUARIO = {{ usuario|tojson }};</script>
+<header>
+  <!-- Menú móvil (01/08/2026). En pantallas chicas las 16 pestañas
+       ocupaban tres filas y empujaban el contenido fuera de la vista: en
+       un iPhone había que hacer scroll solo para llegar a la tabla.
+       El botón las colapsa; en escritorio no existe (display:none). -->
+  <div class="brand">
+    <button class="ham" id="ham" onclick="togglePestanas()"
+            aria-label="Abrir menú" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <h1>FullTennis <span class="badge">Ranking &amp; Research</span></h1>
+  </div>
+
+  <!-- Pestañas (30/07/2026): vivían sueltas debajo del hero, en su propia
+       fila. Se suben acá, junto al logo, para que lean como UNA sola
+       barra en vez de dos bloques desconectados -- es puramente de
+       posición: no se tocó ningún data-tab, ningún onclick ni el orden
+       de los botones, así que selTab() y permisos.js siguen andando
+       exactamente igual. -->
+  {% if not tabs_permitidos %}
+  <!-- Ningún tab visible. No debería ocurrir con los roles definidos, pero
+       una página en blanco es el peor mensaje de error posible: la persona
+       no sabe si la app está caída, si perdió la sesión o si hizo algo
+       mal. Mejor decirlo. -->
+  <div class="warn" style="border-color:#c0392b">
+    Tu cuenta no tiene permiso para ver ninguna sección. Pedile a un
+    administrador que revise tu rol.
+  </div>
+  {% endif %}
+
+  <div class="tabs" id="tabs-nav">
+    {% if puede_ver('rankingproduccion') %}<button class="tab-btn active" data-tab="rankingproduccion" onclick="selTab(this)"><span class="tab-ico">🏆</span><span class="tab-label" title="Ranking FTR">Ranking FTR</span><span class="tab-badge" data-badge="rankingproduccion" style="display:none"></span></button>{% endif %}
+    {% if puede_ver('defensapuntos') %}<button class="tab-btn" data-tab="defensapuntos" onclick="selTab(this)"><span class="tab-ico">🛡</span><span class="tab-label" title="Defensa de Puntos">Defensa de Puntos</span><span class="tab-badge" data-badge="defensapuntos" style="display:none"></span></button>{% endif %}
+    {% if puede_ver('retiros') %}<button class="tab-btn" data-tab="retiros" onclick="selTab(this)"><span class="tab-ico">⭐</span><span class="tab-label" title="Regreso de Retiro — vuelven de un abandono">Regreso de Retiro</span><span class="tab-badge" data-badge="retiros" style="display:none"></span></button>{% endif %}
+    {% if puede_ver('envivodiag') %}<button class="tab-btn" data-tab="envivodiag" onclick="selTab(this)"><span class="tab-ico">🔴</span><span class="tab-label" title="LIVE — partidos en vivo y por qué suena cada uno">LIVE</span><span class="tab-badge" data-badge="envivodiag" style="display:none"></span></button>{% endif %}
+    {% if puede_ver('sonadoras') %}<button class="tab-btn" data-tab="sonadoras" onclick="selTab(this)"><span class="tab-ico">🌙</span><span class="tab-label" title="Soñadoras — los partidos de mañana que pasan los tres filtros">Soñadoras</span></button>{% endif %}
+    {% if puede_ver('postset') %}<button class="tab-btn" data-tab="postset" onclick="selTab(this)"><span class="tab-ico">🎾</span><span class="tab-label" title="POST SET — % de acierto de Over Set 2 en Ventaja leve / Pasan el filtro">POST SET</span></button>{% endif %}
+    {% if puede_ver('ranking') %}<button class="tab-btn" data-tab="ranking" onclick="selTab(this)"><span class="tab-ico">⚡</span><span class="tab-label" title="Ranking Elo">Ranking Elo</span><span class="tab-badge" data-badge="ranking" style="display:none"></span></button>{% endif %}
+      <!-- 🎯 RANKING UTR (08/10/2026, Rubén): junto a Ranking FTR y Ranking Elo; para admin también el padrón. -->
+      {% if puede_ver('utr') %}<button class="tab-btn" data-tab="utr" onclick="selTab(this)"><span class="tab-ico">🎯</span><span class="tab-label" title="Ranking UTR — ranking UTR de todos los jugadores (y, para admin, el padrón)">Ranking UTR</span></button>{% endif %}
+    {% if puede_ver('compare') %}<button class="tab-btn" data-tab="compare" onclick="selTab(this)"><span class="tab-ico">⚖️</span><span class="tab-label" title="Comparador A vs B">Comparador A vs B</span><span class="tab-badge" data-badge="compare" style="display:none"></span></button>{% endif %}
+    {% if puede_ver('mto') %}<button class="tab-btn" data-tab="mto" onclick="selTab(this)"><span class="tab-ico">🚑</span><span class="tab-label" title="MTO">MTO</span><span class="tab-badge" data-badge="mto" style="display:none"></span></button>{% endif %}
+    {% if puede_ver('historialft') %}<button class="tab-btn" data-tab="historialft" onclick="selTab(this)"><span class="tab-ico">📚</span><span class="tab-label" title="Historial FullTennis">HISTORIAL FT</span></button>{% endif %}
+    {% if puede_ver('games24hr') %}<button class="tab-btn" data-tab="games24hr" onclick="selTab(this)"><span class="tab-ico">🕐</span><span class="tab-label" title="Doble Jornada">DOBLE JORNADA</span><span class="tab-badge" data-badge="games24hr" style="display:none"></span></button>{% endif %}
+    {% if puede_ver('valorftr') %}<button class="tab-btn" data-tab="valorftr" onclick="selTab(this)"><span class="tab-ico">◆</span><span class="tab-label" title="Valor FTR">Valor FTR</span><span class="tab-badge" data-badge="valorftr" style="display:none"></span></button>{% endif %}
+    {% if puede_ver('undervivo') %}<button class="tab-btn" data-tab="undervivo" onclick="selTab(this)"><span class="tab-ico">▼</span><span class="tab-label" title="Alertas Under en Vivo (canal LIVE VALUE)">Alertas Under en Vivo</span><span class="tab-badge" data-badge="undervivo" style="display:none"></span></button>{% endif %}
+    {% if puede_ver('favoritovivo') %}<button class="tab-btn" data-tab="favoritovivo" onclick="selTab(this)"><span class="tab-ico">★</span><span class="tab-label" title="Favorito en Vivo">Favorito en Vivo</span><span class="tab-badge" data-badge="favoritovivo" style="display:none"></span></button>{% endif %}
+    {% if puede_ver('valorvivo') %}<button class="tab-btn" data-tab="valorvivo" onclick="selTab(this)"><span class="tab-ico">🔁</span><span class="tab-label" title="Partidos en Vivo">Partidos en Vivo</span><span class="tab-badge" data-badge="valorvivo" style="display:none"></span></button>{% endif %}
+    {% if puede_ver('racha') %}<button class="tab-btn" data-tab="racha" onclick="selTab(this)"><span class="tab-ico">🔥</span><span class="tab-label" title="Jugador en Racha">Jugador en Racha</span><span class="tab-badge" data-badge="racha" style="display:none"></span></button>{% endif %}
+    {% if puede_ver('validator') %}<button class="tab-btn" data-tab="validator" onclick="selTab(this)"><span class="tab-ico">◇</span><span class="tab-label" title="Valor Pre-Partido">Valor Pre-Partido</span><span class="tab-badge" data-badge="validator" style="display:none"></span></button>{% endif %}
+    {% if puede_ver('movimientorentable') %}<button class="tab-btn" data-tab="movimientorentable" onclick="selTab(this)"><span class="tab-ico">📈</span><span class="tab-label" title="Movimiento Rentable">Movimiento Rentable</span><span class="tab-badge" data-badge="movimientorentable" style="display:none"></span></button>{% endif %}
+    {% if puede_ver('historialalertas') %}<button class="tab-btn" data-tab="historialalertas" onclick="selTab(this)"><span class="tab-ico">🗂</span><span class="tab-label" title="Historial de Picks">Historial de Picks</span><span class="tab-badge" data-badge="historialalertas" style="display:none"></span></button>{% endif %}
+    {% if puede_ver('descartes') %}<button class="tab-btn" data-tab="descartes" onclick="selTab(this)"><span class="tab-ico">💡</span><span class="tab-label" title="Sugerencias">Sugerencias</span><span class="tab-badge" data-badge="descartes" style="display:none"></span></button>{% endif %}
+    {% if puede_ver('descartes2') %}<button class="tab-btn" data-tab="descartes2" onclick="selTab(this)"><span class="tab-ico">🗑️</span><span class="tab-label" title="Descartes">Descartes</span></button>{% endif %}
+      {% if puede_ver('pickspre') %}<button class="tab-btn" data-tab="pickspre" onclick="selTab(this)"><span class="tab-ico">💰</span><span class="tab-label" title="Picks Pre-partido">Picks Pre-partido</span><span class="tab-badge" data-badge="pickspre" style="display:none"></span></button>{% endif %}
+      {% if puede_ver('picksvivo') %}<button class="tab-btn" data-tab="picksvivo" onclick="selTab(this)"><span class="tab-ico">▼</span><span class="tab-label" title="Under en Vivo — picks enviados, dashboard e historial">Under en Vivo</span><span class="tab-badge" data-badge="picksvivo" style="display:none"></span></button>{% endif %}
+      <!-- PREPARTIDO - MATCHUP (16/08/2026, a pedido de Maria). Mismo
+           sistema puede_ver()/ver_tab_* que el resto del panel -- hoy
+           solo 'admin' tiene el permiso por default (ver
+           GRUPO_POR_TAB en permisos.py), pero queda listo para
+           abrirse a otros roles desde Admin → Permisos sin deploy. -->
+      {% if puede_ver('prepartidomatchup') %}<button class="tab-btn" data-tab="prepartidomatchup" onclick="selTab(this)"><span class="tab-ico">🧮</span><span class="tab-label" title="Prepartido - MatchUp — calibración del matchup contra resultados reales">Prepartido - MatchUp</span></button>{% endif %}
+      {% if puede_ver('analisisprepartido') %}<button class="tab-btn" data-tab="analisisprepartido" onclick="selTab(this)"><span class="tab-ico">📋</span><span class="tab-label" title="Análisis Pre Partido — registro permanente de todos los pre-partidos con ELO/FTR/MUP y cuota congelados">Análisis Pre Partido</span><span class="tab-badge" data-badge="analisisprepartido" style="display:none"></span></button>{% endif %}
+      <!-- PARTIDOS MAESTROS (01/09/2026, a pedido de Maria). Mismo
+           sistema puede_ver()/ver_tab_* que el resto del panel -- ver
+           production/engines/partidos_maestros.py para el criterio. -->
+      {% if puede_ver('partidosmaestros') %}<button class="tab-btn" data-tab="partidosmaestros" onclick="selTab(this)"><span class="tab-ico">🎓</span><span class="tab-label" title="Partidos Maestros — favoritos moderados con FTR y Elo de acuerdo">Partidos Maestros</span></button>{% endif %}
+      {% if puede_ver('bajonmental') %}<button class="tab-btn" data-tab="bajonmental" onclick="selTab(this)"><span class="tab-ico">🧠</span><span class="tab-label" title="Bajón Mental — puntos de set/partido perdidos con quiebre inmediato">Bajón Mental</span></button>{% endif %}
+      <!-- CUOTA MAL PUESTA (07/10/2026): diagnóstico del motor nuevo --
+           ver production/engines/cuota_mal_puesta.py. -->
+      {% if puede_ver('cuotamalpuesta') %}<button class="tab-btn" data-tab="cuotamalpuesta" onclick="selTab(this)"><span class="tab-ico">🚨</span><span class="tab-label" title="Cuota Mal Puesta — probabilidad FullTenis contra la cuota, diagnóstico">Cuota Mal Puesta</span></button>{% endif %}
+      <!-- UTR VALUE (07/10/2026): ver production/engines/utr_value.py. -->
+      {% if puede_ver('utrvalue') %}<button class="tab-btn" data-tab="utrvalue" onclick="selTab(this)"><span class="tab-ico">📈</span><span class="tab-label" title="UTR VALUE — jugador superior por UTR que el mercado paga alto">UTR VALUE</span></button>{% endif %}
+      <!-- ⏰ RECORDADOR (08/10/2026, Rubén): avisa el próximo partido de un jugador. -->
+      <!-- 🛠 PADRÓN UTR (08/10/2026): la gestión del padrón, aparte del ranking. Solo admin de fábrica. -->
+      {% if puede_ver('utrpadron') %}<button class="tab-btn" data-tab="utrpadron" onclick="selTab(this)"><span class="tab-ico">🛠</span><span class="tab-label" title="Padrón UTR — subir resultados_v2.csv, UTR POWER, cobertura y revisión manual (solo admin)">Padrón UTR</span></button>{% endif %}
+      {# 🎲 FT PROBABILIDAD (30/10/2026): partidos que analiza el servicio aparte FT_PROBABILIDAD. Solo admin de fábrica. #}
+      {% if puede_ver('ftprobabilidad') %}<button class="tab-btn" data-tab="ftprobabilidad" onclick="selTab(this)"><span class="tab-ico">🎲</span><span class="tab-label" title="FT PROBABILIDAD — partidos analizados por el servicio independiente, con su probabilidad experimental (solo admin)">FT PROBABILIDAD</span></button>{% endif %}
+      {% if puede_ver('news') %}<button class="tab-btn" data-tab="news" onclick="selTab(this)"><span class="tab-ico">📰</span><span class="tab-label" title="FT NEWS INTELLIGENCE — Fase 0: estado del servicio y calibración de bandas (solo admin)">FT NEWS</span></button>{% endif %}
+      {# 🔥 UNDER UTR (v54i, 15/10/2026): ver production/engines/under_utr.py. #}
+      {% if puede_ver('underutr') %}<button class="tab-btn" data-tab="underutr" onclick="selTab(this)"><span class="tab-ico">🔥</span><span class="tab-label" title="Under UTR — solo pre-partido: ΔUTR ≥ 1.70, UNDER ≥ 16.5 y cuota ≥ 1.70 antes del primer punto, singles, fuera de UTR Pro">Under UTR</span></button>{% endif %}
+      {% if puede_ver('implicacion') %}<button class="tab-btn" data-tab="implicacion" onclick="selTab(this)"><span class="tab-ico">🏆</span><span class="tab-label" title="Implicación de Torneo — picks en vivo: favorito PRE que pierde el 1.er set defendiendo puntos (dashboard e historial)">Implicación</span></button>{% endif %}
+      {% if puede_ver('balance') %}<button class="tab-btn" data-tab="balance" onclick="selTab(this)"><span class="tab-ico">💰</span><span class="tab-label" title="Balance de apuestas — tu bank, tus apuestas y el resultado por estrategia">Balance de apuestas</span></button>{% endif %}
+      {% if puede_ver('recordador') %}<button class="tab-btn" data-tab="recordador" onclick="selTab(this)"><span class="tab-ico">⏰</span><span class="tab-label" title="Recordador — te avisa cuando un jugador vuelve a jugar">Recordador</span><span class="tab-badge" data-badge="recordador" style="display:none"></span></button>{% endif %}
+      <!-- BOT BUSCADOR (28/09/2026): servicio APARTE; esta pestaña solo lo
+           consume desde el navegador. Si el servicio no está, la pestaña lo
+           dice y nada más cambia. Ver production/api/routes_buscador.py. -->
+      {% if puede_ver('buscador') %}<button class="tab-btn" data-tab="buscador" onclick="selTab(this)"><span class="tab-ico">🔎</span><span class="tab-label" title="BOT BUSCADOR — abre el partido en tus casas">BOT BUSCADOR</span></button>{% endif %}
+  </div>
+
+  <div class="header-meta">
+    {% if usuario %}<span class="quien" title="Sesión iniciada">{{ usuario }}{% if rol %} <span class="quien-rol">{{ rol }}</span>{% endif %}</span>
+    <span id="quien-vence" class="quien-vence"
+          data-horas="{{ horas_restantes if horas_restantes is not none else '' }}"></span>{% endif %}
+    <!-- El header quedó vacío del lado derecho al sacar la leyenda del
+         motor experimental (29/07/2026). En vez de dejar el hueco, va la
+         cuenta con la que se está viendo el panel: es lo único que a esta
+         altura de la página alguien puede necesitar saber y no está en
+         ninguna otra parte. -->
+    <!-- LINK A ADMIN QUITADO (29/07/2026, a pedido de Rubén: "que no se
+         vea la entrada a la vista de Admin").
+
+         Honestidad sobre qué aporta esto: es seguridad por oscuridad.
+         Evita que alguien que mira la página por encima del hombro vea
+         que hay un panel, y evita que un crawler siga el link. NO
+         protege el panel: quien busque encontrará la ruta probando
+         /admin o leyendo el JS público. Lo que protege de verdad es el
+         login con sesión (production/api/auth.py) y, si querés una capa
+         más, mover la ruta con FTR_ADMIN_PATH a algo no adivinable.
+
+         Para entrar: escribir la URL del panel a mano o guardarla en
+         favoritos.
+
+         30/07/2026: hubo un intento de agregar un control chico de
+         "subir/bajar rol" acá mismo (modal con PATCH /admin/usuarios/{id}),
+         a pedido de Maria en su momento. Mismo día, después de verlo
+         andando, decidió que no: "en el panel de Admin es donde debo
+         decidir qué es cada usuario... por qué en este momento sale en
+         la vista principal y eso no me gusta". Se sacó. El manejo de
+         roles vive solo en /admin (panel.html), donde ya estaba antes
+         de este intento. -->
+    {% if usuario %}
+    <button class="btn-header-meta" onclick="cerrarSesionFTR()" title="Cerrar sesión">⏻ Salir</button>
+    {% endif %}
+  </div>
+</header>
+
+<!-- Selector de canales de Picks (30/07/2026, a pedido de Maria: "cuando
+     le doy click en enviar pick se debe mostrar una lista con los
+     canales disponibles y después sí enviar el pick"). Uno solo,
+     compartido por todos los botones "📤 Enviar a Picks" de todas las
+     pestañas (mismo patrón que enviarAPicks() en common.js, que ya era
+     compartido) -- así no hay un modal por pestaña para mantener. -->
+<div id="modal-picks-destinos" class="modal-overlay" style="display:none" onclick="if(event.target===this) cerrarSelectorPicksDestinos()">
+  <div class="modal-caja">
+    <div class="modal-titulo">¿A qué canal(es) enviar? <button class="modal-cerrar" onclick="cerrarSelectorPicksDestinos()">✕</button></div>
+    <div id="modal-picks-destinos-lista" class="modal-picks-destinos-lista"></div>
+    <button id="modal-picks-destinos-confirmar" class="go" style="width:100%;margin-top:16px">📤 Enviar</button>
+  </div>
+</div>
+
+<!-- Crear Pick (31/07/2026, a pedido de Maria: "en Picks en Vivo, como
+     si fuera una casa de apuestas"). Un pick de verdad, no una alerta --
+     por eso no tiene aclaración de "sugerencia" en ningún lado (eso es
+     el botón 💡 Sugerencias, que es otra cosa). Al confirmar reusa el
+     mismo selector de canales de arriba (modal-picks-destinos). -->
+<div id="modal-crear-pick" class="modal-overlay" style="display:none" onclick="if(event.target===this) cerrarModalCrearPick()">
+  <div class="modal-caja">
+    <div class="modal-titulo">➕ Crear Pick <button class="modal-cerrar" onclick="cerrarModalCrearPick()">✕</button></div>
+    <div class="modal-form">
+      <!-- Llenado rápido (01/08/2026, a pedido de Maria: "debe tener la
+           opción de llenado como en el comparador") -- mismo parseo
+           "A vs B" que ya usa completarDesdeVs() en comparador.js,
+           reusado acá con los IDs de este modal. -->
+      <div class="ctrl-row">
+        <input type="text" id="cp-vs-texto" placeholder="o escribí acá 'Jugador A vs Jugador B' y se completa solo"
+               style="flex:1" autocomplete="off"
+               onkeydown="if(event.key==='Enter'){event.preventDefault();cpCompletarDesdeVs();}">
+        <button class="go" type="button" onclick="cpCompletarDesdeVs()">Completar</button>
+      </div>
+
+      <label class="muted" for="cp-j1">Jugador 1</label>
+      <input id="cp-j1" type="text" placeholder="Nombre jugador 1" list="dl-cp-j1" autocomplete="off">
+      <datalist id="dl-cp-j1"></datalist>
+      <!-- Jugador 2 es OPCIONAL desde el 01/08/2026. Se crean picks a
+           mano y a menudo solo importa uno ("Alcaraz gana el set 2"):
+           obligar a escribir el rival era teclear de más para nada. -->
+      <label class="muted" for="cp-j2">Jugador 2 <span style="opacity:.6">(opcional)</span></label>
+      <input id="cp-j2" type="text" placeholder="Rival — dejalo vacío si no hace falta" list="dl-cp-j2" autocomplete="off">
+      <datalist id="dl-cp-j2"></datalist>
+      <label class="muted" for="cp-mercado">Mercado</label>
+      <select id="cp-mercado" onchange="_cpCambiarMercado()">
+        <option value="ganador">Ganador del partido</option>
+        <option value="set">Ganador de un set</option>
+        <option value="total">Total de juegos (Over/Under)</option>
+      </select>
+
+      <div id="cp-bloque-ganador">
+        <label class="muted">Selección</label>
+        <div id="cp-ganador-opciones" class="ctrl-row" style="gap:14px">
+          <label><input type="radio" name="cp-ganador" value="j1" checked> <span id="cp-ganador-nombre1">Jugador 1</span></label>
+          <label><input type="radio" name="cp-ganador" value="j2"> <span id="cp-ganador-nombre2">Jugador 2</span></label>
+        </div>
+      </div>
+      <!-- Apuesta al set (01/08/2026). Un solo jugador y el número de
+           set: es el caso más frecuente en vivo. -->
+      <div id="cp-bloque-set" style="display:none">
+        <label class="muted">Selección</label>
+        <div class="ctrl-row" style="gap:14px">
+          <select id="cp-set-jugador">
+            <option value="j1">Jugador 1</option>
+            <option value="j2">Jugador 2</option>
+          </select>
+          <select id="cp-set-num">
+            <option value="1">Set 1</option>
+            <option value="2">Set 2</option>
+            <option value="3">Set 3</option>
+            <option value="4">Set 4</option>
+            <option value="5">Set 5</option>
+          </select>
+        </div>
+      </div>
+      <div id="cp-bloque-total" style="display:none">
+        <label class="muted">Selección</label>
+        <div class="ctrl-row" style="gap:14px">
+          <select id="cp-total-lado">
+            <option value="under">Under</option>
+            <option value="over">Over</option>
+          </select>
+          <input id="cp-total-linea" type="number" step="0.5" placeholder="Línea (ej. 21.5)" style="width:120px">
+        </div>
+      </div>
+
+      <label class="muted" for="cp-cuota">Cuota</label>
+      <input id="cp-cuota" type="number" step="0.01" min="1.01" placeholder="ej. 1.85">
+
+      <label class="muted" for="cp-torneo">Torneo (opcional)</label>
+      <input id="cp-torneo" type="text" placeholder="Torneo">
+
+      <div class="ctrl-row" style="gap:14px">
+        <span class="pk-campo">
+          <label class="muted" for="cp-superficie">Superficie</label>
+          <select id="cp-superficie">
+            <option value="">—</option>
+            <option value="hard">Dura</option>
+            <option value="clay">Tierra</option>
+            <option value="grass">Césped</option>
+          </select>
+        </span>
+        <span class="pk-campo">
+          <label class="muted" for="cp-genero">Género</label>
+          <select id="cp-genero">
+            <option value="">—</option>
+            <option value="M">Hombres</option>
+            <option value="F">Mujeres</option>
+          </select>
+        </span>
+      </div>
+    </div>
+    <button id="cp-confirmar" class="go" style="width:100%;margin-top:16px" onclick="_cpConfirmar()">📤 Crear y enviar</button>
+  </div>
+</div>
+
+<div class="container">
+  <!-- 29/07/2026: se sacó el cartel de arriba ("Panel único de
+       FullTennis...") a pedido de Rubén, junto con la leyenda del motor
+       experimental. Lo que decía sobre cada ranking vive ahora dentro de
+       su propia pestaña, que es donde se lee cuando hace falta; lo que
+       decía sobre el refresco lo dice el punto "En vivo" del Ranking FTR,
+       que además es verdad en tiempo real y no una promesa escrita. -->
+  <!-- Hero (30/07/2026). El mockup traía acá una foto de prensa de un
+       tenista identificable con la marca del sponsor a la vista; no se
+       usa, ver la nota en research.css. La línea es dato propio: el
+       latido de los últimos partidos reportados, que dibuja
+       rpDibujarHero() con lo que ya trae el feed. -->
+  <div class="hero">
+    <svg class="hero-latido" id="hero-latido" viewBox="0 0 210 78" preserveAspectRatio="none" aria-hidden="true">
+      <path class="base" d="M0 39 H210"></path>
+      <path class="viva" id="hero-linea" d="M0 39 H210"></path>
+    </svg>
+    <div class="hero-txt">
+      <h2>Panel único de <b>FullTennis</b></h2>
+      <p class="hero-sub" id="hero-sub">Ranking propio, calculado partido a partido.</p>
+    </div>
+
+    <!-- Figura del saque (actualizado 30/07/2026): antes era una silueta
+         anónima por las razones que se explican más arriba. Maria decidió
+         reemplazarla por una ilustración comprada de un tenista -- ver el
+         aviso que se le dio sobre derecho de imagen y marca (gorra/remera
+         con logo) antes de este cambio; la decisión final y el riesgo son
+         de ella. Se aplica la misma técnica que ya usaba
+         production/web/static/css/rankings.css para su .hero-player:
+         mix-blend-mode:screen sobre el fondo oscuro del hero hace que el
+         rectángulo de la imagen desaparezca y solo quede la figura
+         iluminada, más una máscara que la desvanece hacia la izquierda
+         para que no se vea un corte recto. -->
+    <div class="hero-img" aria-hidden="true"></div>
+  </div>
+
+  {% if puede_ver('rankingproduccion') %}{% include "tabs/ranking_produccion.html" %}{% endif %}
+  {% if puede_ver('ranking') %}{% include "tabs/ranking_elo.html" %}{% endif %}
+  {% if puede_ver('compare') %}{% include "tabs/comparador.html" %}{% endif %}
+  {% if puede_ver('validator') %}{% include "tabs/valor_pre_partido.html" %}{% endif %}
+  {% if puede_ver('undervivo') %}{% include "tabs/under_vivo.html" %}{% endif %}
+  {% if puede_ver('favoritovivo') %}{% include "tabs/favorito_vivo.html" %}{% endif %}
+  {% if puede_ver('valorvivo') %}{% include "tabs/valor_en_vivo.html" %}{% endif %}
+  {% if puede_ver('racha') %}{% include "tabs/racha.html" %}{% endif %}
+  {% if puede_ver('defensapuntos') %}{% include "tabs/defensa_puntos.html" %}{% endif %}
+  {% if puede_ver('retiros') %}{% include "tabs/retiros.html" %}{% endif %}
+  {% if puede_ver('envivodiag') %}{% include "tabs/envivo_diagnostico.html" %}{% endif %}
+  {% if puede_ver('sonadoras') %}{% include "tabs/sonadoras.html" %}{% endif %}
+  {% if puede_ver('postset') %}{% include "tabs/post_set.html" %}{% endif %}
+  {% if puede_ver('movimientorentable') %}{% include "tabs/movimiento_rentable.html" %}{% endif %}
+  {% if puede_ver('historialalertas') %}{% include "tabs/historial_alertas.html" %}{% endif %}
+  {% if puede_ver('descartes') %}{% include "tabs/descartes.html" %}{% endif %}
+  {% if puede_ver('descartes2') %}{% include "tabs/descartes2.html" %}{% endif %}
+  {% if puede_ver('pickspre') %}{% include "tabs/picks_pre.html" %}{% endif %}
+  {% if puede_ver('picksvivo') %}{% include "tabs/picks_vivo.html" %}{% endif %}
+  {% if puede_ver('prepartidomatchup') %}{% include "tabs/prepartido_matchup.html" %}{% endif %}
+  {% if puede_ver('analisisprepartido') %}{% include "tabs/analisis_pre_partido.html" %}{% endif %}
+  {% if puede_ver('partidosmaestros') %}{% include "tabs/partidos_maestros.html" %}{% endif %}
+  {% if puede_ver('bajonmental') %}{% include "tabs/bajon_mental.html" %}{% endif %}
+  {% if puede_ver('cuotamalpuesta') %}{% include "tabs/cuota_mal_puesta.html" %}{% endif %}
+  {% if puede_ver('utrvalue') %}{% include "tabs/utr_value.html" %}{% endif %}
+  {% if puede_ver('utr') %}{% include "tabs/utr.html" %}{% endif %}
+  {% if puede_ver('utrpadron') %}{% include "tabs/utr_padron.html" %}{% endif %}
+  {% if puede_ver('ftprobabilidad') %}{% include "tabs/ft_probabilidad.html" %}{% endif %}
+  {% if puede_ver('news') %}{% include "tabs/news.html" %}{% endif %}
+  {% if puede_ver('recordador') %}{% include "tabs/recordador.html" %}{% endif %}
+  {% if puede_ver('balance') %}{% include "tabs/balance.html" %}{% endif %}
+  {% if puede_ver('implicacion') %}{% include "tabs/implicacion.html" %}{% endif %}
+  {% if puede_ver('underutr') %}{% include "tabs/under_utr.html" %}{% endif %}
+  {% if puede_ver('buscador') %}{% include "tabs/buscador.html" %}{% endif %}
+  {% include "tabs/_modal_analisis_ia.html" %}
+  {% if puede_ver('mto') %}{% include "tabs/mto.html" %}{% endif %}
+  {% if puede_ver('historialft') %}{% include "tabs/historial_ft.html" %}{% endif %}
+  {% if puede_ver('games24hr') %}{% include "tabs/games24hr.html" %}{% endif %}
+  {% if puede_ver('valorftr') %}{% include "tabs/valor_ftr.html" %}{% endif %}
+</div>
+
+<!-- Pie de página (31/07/2026). Nace VACÍO y oculto a propósito: los
+     links los pone pieCargarRedes() (common.js) con lo que haya cargado
+     en Admin → Redes. Si no hay ninguna, el pie no se muestra -- una
+     franja con un borde y nada adentro parece un error de maquetado, no
+     una decisión. -->
+<!-- Botón de aviso rápido (01/08/2026). Reemplaza a la pestaña Chat: el
+     pedido cambió de "conversar" a "avisar algo urgente". Flotante y
+     siempre visible porque su valor es poder usarlo SIN salir de lo que
+     estabas mirando. Solo se muestra a quien tenga el permiso. -->
+{% if puede_ver('chat') %}
+<button class="fab-aviso" id="fab-aviso" onclick="abrirAviso()"
+        title="Avisar de algo en un partido" aria-label="Enviar aviso">
+  <span class="fab-ico">🎾</span>
+</button>
+
+<!-- 03/08/2026, a pedido de Maria: "Cliqueo el botón una vez me sale
+     el modal, que dice vas a enviar una alerta... Confirmar y
+     Descartar. Confirmar enviar el mensaje que dice, Posible entrada
+     de valor" -- reemplaza al modal viejo (jugador + texto libre). Un
+     solo clic, sin nada que escribir. -->
+<div class="aviso-fondo" id="aviso-fondo" onclick="cerrarAviso(event)">
+  <div class="aviso-caja" onclick="event.stopPropagation()">
+    <h3>Vas a enviar una alerta</h3>
+    <!-- El texto sale de Admin → Estrategias → Mensajes (MSG_AVISO_BOTON);
+         abrirAviso() lo pide a /api/chat/mensaje-aviso al abrir el modal, así
+         que este valor es solo lo que se ve el primer instante. -->
+    <p class="aviso-confirmacion">Se va a mandar "<strong id="aviso-texto-msg">🚨URGENTE AL DISCORD🚨</strong>" a Telegram, al celular y a todos los usuarios que tengan el panel abierto.</p>
+    <div class="aviso-pie">
+      <span class="aviso-nota" id="aviso-nota"></span>
+      <div>
+        <button class="btn-sec" onclick="cerrarAviso()">Descartar</button>
+        <button class="btn-pri" id="aviso-enviar" onclick="enviarAviso()">Confirmar</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Control de notificaciones (01/08/2026). Vive en el pie, junto a las
+     redes: es configuración personal, no una sección del panel. -->
+<div class="push-ctrl" id="push-ctrl" style="display:none">
+  <button id="push-btn" onclick="pushToggle()" title="Notificaciones al celular">
+    <span id="push-ico">🔕</span><span id="push-txt">Notificaciones</span>
+  </button>
+  <button id="push-test" onclick="pushProbar()" title="Enviar una de prueba"
+          style="display:none">Probar</button>
+  <!-- Diagnóstico: en un iPhone no hay consola, así que el estado tiene
+       que poder verse desde la propia página. -->
+  <button id="push-diag" onclick="pushDiagnostico()" title="Ver estado">?</button>
+</div>
+
+<footer class="pie-sitio" id="pie-sitio">
+  <div class="pie-redes" id="pie-redes"></div>
+  <div class="pie-texto">FullTennis</div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- common.js SIEMPRE primero -- el resto de los tabs/*.js dependen de -->
+<!-- sus funciones compartidas (TOKEN, selTab, toasts, modal de IA). -->
+<script src="/static/js/permisos.js?v=20260809a-colspan"></script>
+<script src="/research/static/js/common.js?v=20261028-balance"></script>
+<script src="/research/static/js/tabs/ranking_produccion.js?v=20260730b"></script>
+<script src="/research/static/js/tabs/ranking_elo.js?v=20260731a"></script>
+<script src="/research/static/js/tabs/comparador.js?v=20261008a-utr"></script>
+<script src="/research/static/js/tabs/valor_pre_partido.js?v=20260804a-superficie"></script>
+<script src="/research/static/js/tabs/analisis_pre_partido.js?v=20260910a"></script>
+<script src="/research/static/js/tabs/under_vivo.js?v=20260729p"></script>
+<script src="/research/static/js/tabs/favorito_vivo.js?v=20260729p"></script>
+<script src="/research/static/js/tabs/valor_en_vivo.js?v=20260801p"></script>
+<!-- ?v= (28/08/2026): SIN subir este número, el navegador sigue
+     sirviendo el archivo viejo aunque el deploy tenga el nuevo. Pasó
+     exactamente eso con los "Mejores grupos": el backend ya devolvía
+     solo BREAK pero la pantalla seguía mostrando los botones de orden y
+     el "En vivo" en la barra lateral, porque el racha.js cacheado era
+     el del 22/08. Cada vez que se toca este archivo hay que subirlo. -->
+<script src="/research/static/js/tabs/racha.js?v=20260828b-cuota"></script>
+<script src="/research/static/js/tabs/defensa_puntos.js?v=20260801d"></script>
+<script src="/research/static/js/tabs/movimiento_rentable.js?v=20261016-v54j"></script>
+<script src="/research/static/js/tabs/historial_alertas.js?v=20261013-cerrar"></script>
+<script src="/research/static/js/tabs/descartes.js?v=20260901a-etiqueta-unica"></script>
+<script src="/research/static/js/tabs/descartes2.js?v=20260820a"></script>
+<script src="/research/static/js/tabs/picks.js?v=20260730c"></script>
+<!-- Dashboard estilo Historial de Picks en Maestros / Cuota Mal Puesta / UTR
+     VALUE (08/10/2026). DESPUÉS de picks.js: reusa sus tarjetas. -->
+<script src="/research/static/js/tabs/dashboard_estrategia.js?v=20261030-ftprob"></script>
+<script src="/research/static/js/tabs/mto.js?v=20260720b"></script>
+<script src="/research/static/js/tabs/games24hr.js?v=20260720b"></script>
+<script src="/research/static/js/tabs/valor_ftr.js?v=20260729p"></script>
+{% if puede_ver('buscador') %}<script src="/research/static/js/tabs/buscador_ventanas.js?v=20261002b" defer></script><script src="/research/static/js/tabs/buscador.js?v=20261002b" defer></script>{% endif %}
+</body>
+</html>
