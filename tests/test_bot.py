@@ -270,11 +270,11 @@ check("por defecto: alerta, Ventaja Leve, Pasan Filtro, MTO, Cuota Mal Puesta, R
       config.TIPOS_TEXTO == {"REVISION_VOZ", "VENTAJA_LEVE", "PASAN_FILTRO", "MTO_VIVO", "APRENDIZAJE",
                              "CUOTA_MAL_PUESTA", "UTR_VALUE", "UTR_MARKET_ANOMALY", "RECORDADOR", "RECORDADOR_IA",
                              "RECORDADOR_VIVO", "NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA", "IMPLICACION", "UNDER_PICK",
-                             "MOVIMIENTO_RENTABLE", "UNDER_UTR"}
+                             "MOVIMIENTO_RENTABLE", "UNDER_UTR", "PROB_CANDIDATO", "PROB_CANDIDATO_INICIO"}
       and config.TIPOS_VOZ == {"REVISION_VOZ", "VENTAJA_LEVE", "PASAN_FILTRO", "MTO_VIVO",
                                "CUOTA_MAL_PUESTA", "UTR_VALUE", "UTR_MARKET_ANOMALY", "RECORDADOR", "RECORDADOR_IA",
                                "RECORDADOR_VIVO", "NEWS_VALOR", "NEWS_INTERESANTE", "NEWS_NOTICIA", "IMPLICACION", "UNDER_PICK",
-                               "MOVIMIENTO_RENTABLE", "UNDER_UTR"})
+                               "MOVIMIENTO_RENTABLE", "UNDER_UTR", "PROB_CANDIDATO_INICIO"})
 
 print("\n6. La ficha consolidada del motor de vigilancia")
 from ft_discord.textos import cuota_hablada  # noqa: E402

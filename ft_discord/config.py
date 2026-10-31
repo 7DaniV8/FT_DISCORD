@@ -64,12 +64,15 @@ import os
 # UNDER_UTR (v19, 15/10/2026, Rubén: «cuando las condiciones se cumplan, quiero que pueda mandar la señal a Discord»):
 # 🔥 UNDER UTR de RankingFTR v54i, texto (formato del pedido) y voz en el acto, con acuse. Encendido de fábrica; se
 # gobierna en Admin → Discord. Mismo OJO con las variables de Railway.
+# PROB_CANDIDATO / PROB_CANDIDATO_INICIO (30/10/2026, Daniel): 🎲 candidatos de FT PROBABILIDAD (probabilidad y cuota mínimas
+# del Admin). El primero, al detectarlos: texto, sin voz. El segundo, minutos antes del inicio: texto y voz. Se gobiernan
+# en Admin → Discord. Mismo OJO con las variables de Railway.
 _TODOS = ("REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,APRENDIZAJE,CUOTA_MAL_PUESTA,"
           "UTR_VALUE,UTR_MARKET_ANOMALY,RECORDADOR,RECORDADOR_IA,RECORDADOR_VIVO,NEWS_VALOR,NEWS_INTERESANTE,NEWS_NOTICIA,"
-          "IMPLICACION,UNDER_PICK,MOVIMIENTO_RENTABLE,UNDER_UTR")
+          "IMPLICACION,UNDER_PICK,MOVIMIENTO_RENTABLE,UNDER_UTR,PROB_CANDIDATO,PROB_CANDIDATO_INICIO")
 _VOZ = ("REVISION_VOZ,VENTAJA_LEVE,PASAN_FILTRO,MTO_VIVO,CUOTA_MAL_PUESTA,UTR_VALUE,UTR_MARKET_ANOMALY,"
         "RECORDADOR,RECORDADOR_IA,RECORDADOR_VIVO,NEWS_VALOR,NEWS_INTERESANTE,NEWS_NOTICIA,IMPLICACION,UNDER_PICK,"
-        "MOVIMIENTO_RENTABLE,UNDER_UTR")
+        "MOVIMIENTO_RENTABLE,UNDER_UTR,PROB_CANDIDATO_INICIO")
 
 
 def _lista(nombre: str, defecto: str) -> set:
