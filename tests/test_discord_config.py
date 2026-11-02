@@ -134,7 +134,51 @@ async def escenario():
     check("Recordador no está en la configuración → Railway (solo texto)", len(publicados) == n_t + 1 and r["voz"] == 0, r)
 
 
+async def escenario_canales():
+    """(02/11/2026) Admin → Discord: canal de texto propio por tipo."""
+    print("\n7 · Canal propio por tipo")
+    general, en_canal = [], []
+
+    async def pub_general(t):
+        general.append(t)
+
+    async def pub_en(canal_id, t):
+        if canal_id == 666:
+            raise RuntimeError("Missing Access")
+        en_canal.append((canal_id, t))
+
+    SENALES.clear()
+    CONFIG.update(estado=200, cuerpo={"version": 1, "pausa": False, "tipos": {
+        "CUOTA_MAL_PUESTA": {"texto": True, "voz": False, "canal_id": "1234567890123456789"},
+        "RECORDADOR": {"texto": True, "voz": False, "canal_id": None},
+        "MTO_VIVO": {"texto": True, "voz": False, "canal_id": "666"},
+        "UNDER_PICK": {"texto": True, "voz": False, "canal_id": "no-es-numero"}}})
+    fuente = Fuente("https://ft-intel.test", "secreto", transport=httpx.MockTransport(ft_intel))
+    a = Anunciador(fuente, pub_general, encolar, "UTC", set(), set(), 30, reloj=lambda: AHORA, publicar_en=pub_en)
+    await a.arrancar(0)
+    SENALES.extend([senal(101, "CUOTA_MAL_PUESTA"), senal(102, "RECORDADOR")])
+    r = await a.ciclo()
+    check("con canal propio: sale en ese canal y NO en el general",
+          len(en_canal) == 1 and en_canal[0][0] == 1234567890123456789 and not any("Ya empezó" in g for g in general), (en_canal, general))
+    check("sin canal propio: sale en el canal general", len(general) == 1, general)
+    SENALES.append({**senal(103, "MTO_VIVO"), "datos": {"jugador_mto": "Ana Uno", "rival": "Bea Dos", "texto_discord": "x", "texto_voz": "x"}})
+    n_g = len(general)
+    r = await a.ciclo()
+    check("canal sin permiso: el aviso no se pierde, sale en el general", len(general) == n_g + 1 and r["canal_falla"] == 1, (r, general))
+    SENALES.append(senal(104, "UNDER_PICK"))
+    n_g = len(general)
+    await a.ciclo()
+    check("canal con basura: se ignora y sale en el general", len(general) == n_g + 1)
+    a2 = Anunciador(fuente, pub_general, encolar, "UTC", set(), set(), 30, reloj=lambda: AHORA)   # bot sin publicar_en (versión vieja)
+    await a2.arrancar()
+    SENALES.append(senal(105, "CUOTA_MAL_PUESTA"))
+    n_g = len(general)
+    await a2.ciclo()
+    check("sin publicar_en todo sigue por el canal general", len(general) == n_g + 1)
+
+
 asyncio.run(escenario())
+asyncio.run(escenario_canales())
 print(f"\n{'─' * 60}")
 if _fallos:
     print(f"{_ok} OK, {len(_fallos)} FALLAS: {_fallos}")

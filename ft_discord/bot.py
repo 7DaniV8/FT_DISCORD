@@ -214,6 +214,18 @@ class Bot(discord.Client):
         async def publicar(texto: str) -> None:
             await canal.send(texto[:1900], allowed_mentions=discord.AllowedMentions.none())
 
+        # (02/11/2026) Canal de texto propio por tipo (Admin → Discord). Los canales se abren la primera vez y se guardan.
+        canales: dict = {config.CANAL_TEXTO_ID: canal}
+
+        async def publicar_en(canal_id: int, texto: str) -> None:
+            c = canales.get(canal_id)
+            if c is None:
+                c = self.get_channel(canal_id) or await self.fetch_channel(canal_id)
+                if not hasattr(c, "send"):
+                    raise ValueError("no es un canal de texto")
+                canales[canal_id] = c
+            await c.send(texto[:1900], allowed_mentions=discord.AllowedMentions.none())
+
         # v16: canal SOLO de administradores (la 🧪 PRUEBA de FT NEWS). Sin él, eso no se publica.
         publicar_admin = None
         if config.CANAL_ADMIN_ID:
@@ -245,7 +257,7 @@ class Bot(discord.Client):
                                 config.MAX_ANTIGUEDAD_MIN, config.SILENCIO_VOZ,
                                 umbral_agrupar=config.UMBRAL_AGRUPAR,
                                 voz_probabilidades=config.VOZ_PROBABILIDADES,
-                                publicar_admin=publicar_admin)
+                                publicar_admin=publicar_admin, publicar_en=publicar_en)
         cursor = await anunciador.arrancar_con_reintentos(config.DESDE_ID)
         print(f"[FTDiscord] listo como {self.user} | texto #{canal} | admin: {'sí' if publicar_admin else 'no'} | voz: "
               f"{'sí' if voz else 'no'} | desde la señal #{cursor}", flush=True)

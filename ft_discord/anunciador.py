@@ -48,10 +48,14 @@ class Anunciador:
                  tipos_voz: set, max_antiguedad_min: float, silencio_voz: str = "",
                  reloj: Optional[Callable[[], datetime]] = None, umbral_agrupar: int = 3,
                  voz_probabilidades: bool = True,
-                 publicar_admin: Optional[Callable[[str], Awaitable[None]]] = None):
+                 publicar_admin: Optional[Callable[[str], Awaitable[None]]] = None,
+                 publicar_en: Optional[Callable[[int, str], Awaitable[None]]] = None):
         self.fuente, self.publicar_texto, self.encolar_voz = fuente, publicar_texto, encolar_voz
         # v16: canal SOLO de administradores (None = no hay; lo de admin no se publica en ningún lado)
         self.publicar_admin = publicar_admin
+        # (02/11/2026) Admin → Discord: canal de texto propio por tipo. publicar_en(canal_id, texto); sin él (o sin canal_id
+        # en la configuración) todo sale por publicar_texto, el canal general de siempre.
+        self.publicar_en = publicar_en
         self.zona, self.tipos_texto, self.tipos_voz = zona, tipos_texto, tipos_voz
         self.max_antiguedad_min, self.silencio_voz = max_antiguedad_min, silencio_voz
         self.reloj = reloj or (lambda: datetime.now(timezone.utc))
@@ -76,6 +80,15 @@ class Anunciador:
             if t is not None:
                 return bool(t.get(canal))
         return tipo in (self.tipos_texto if canal == "texto" else self.tipos_voz)
+
+    def _canal_propio(self, tipo: str) -> Optional[int]:
+        """ID de canal configurado en Admin para este tipo (None = el canal general)."""
+        t = ((self.config_remota or {}).get("tipos") or {}).get(tipo) or {}
+        try:
+            n = int(str(t.get("canal_id") or "").strip() or 0)
+        except ValueError:
+            return None
+        return n or None
 
     def _personalizar(self, tipo: str, texto: str, voz: str) -> tuple:
         """Encabezado (primera línea del mensaje) y frase de voz al inicio."""
@@ -137,7 +150,19 @@ class Anunciador:
             acuse["motivo"] = "tipo apagado en Admin → Discord (o pausa general)"
         if self._permite(tipo, "texto"):
             try:
-                await self.publicar_texto(texto)
+                canal_id = self._canal_propio(tipo) if self.publicar_en else None
+                if canal_id:
+                    try:
+                        await self.publicar_en(canal_id, texto)
+                        acuse["canal"] = str(canal_id)
+                    except Exception as e:           # noqa: BLE001 -- canal mal puesto o sin permiso: no se pierde el aviso
+                        log.warning(f"[FTDiscord] no se pudo publicar en el canal {canal_id} ({tipo}): {e}")
+                        r["canal_falla"] = r.get("canal_falla", 0) + 1
+                        await self.publicar_texto(texto)
+                        acuse["motivo"] = (f"el canal {canal_id} configurado en Admin no está disponible "
+                                           f"({str(e)[:60]}): salió en el canal general")
+                else:
+                    await self.publicar_texto(texto)
                 r["texto"] += 1
                 acuse["texto"] = True
             except Exception as e:               # noqa: BLE001 -- una falla no frena al resto
