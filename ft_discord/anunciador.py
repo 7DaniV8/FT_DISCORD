@@ -56,6 +56,7 @@ class Anunciador:
         # (02/11/2026) Admin → Discord: canal de texto propio por tipo. publicar_en(canal_id, texto); sin él (o sin canal_id
         # en la configuración) todo sale por publicar_texto, el canal general de siempre.
         self.publicar_en = publicar_en
+        self._pruebas_vistas: set = set()      # ids de pruebas de Admin ya hechas
         self.zona, self.tipos_texto, self.tipos_voz = zona, tipos_texto, tipos_voz
         self.max_antiguedad_min, self.silencio_voz = max_antiguedad_min, silencio_voz
         self.reloj = reloj or (lambda: datetime.now(timezone.utc))
@@ -89,6 +90,43 @@ class Anunciador:
         except ValueError:
             return None
         return n or None
+
+    async def _pruebas(self, r: dict) -> None:
+        """🧪 Botón «Probar» de Admin → Discord: un mensaje de prueba en el canal de ese tipo. Si el canal falla, el aviso del
+        fallo sale en el canal general para que se vea en Discord mismo."""
+        c = self.config_remota or {}
+        if c.get("pausa"):
+            return
+        for p in sorted(c.get("pruebas") or [], key=lambda x: x.get("id", 0)):
+            pid = p.get("id")
+            if pid is None or pid in self._pruebas_vistas:
+                continue
+            self._pruebas_vistas.add(pid)
+            try:
+                creado = datetime.fromisoformat(str(p.get("creado_en")).replace("Z", "+00:00"))
+                if (self.reloj() - (creado if creado.tzinfo else creado.replace(tzinfo=timezone.utc))).total_seconds() > 600:
+                    continue                    # una prueba vieja (p. ej. tras reiniciar el bot) no se repite
+            except (TypeError, ValueError):
+                continue
+            texto = str(p.get("texto") or "🧪 PRUEBA")
+            try:
+                canal_id = int(str(p.get("canal_id") or "").strip() or 0)
+            except ValueError:
+                canal_id = 0
+            try:
+                if canal_id and self.publicar_en:
+                    try:
+                        await self.publicar_en(canal_id, texto)
+                    except Exception as e:           # noqa: BLE001
+                        await self.publicar_texto(f"⚠️ PRUEBA de {p.get('tipo')}: no pude escribir en el canal {canal_id} "
+                                                  f"({str(e)[:80]}). Revisa el ID y los permisos del bot en ese canal.")
+                else:
+                    await self.publicar_texto(texto + ("\n(este tipo no tiene canal propio: sale en el canal general)"
+                                                       if not canal_id else ""))
+                r["pruebas"] = r.get("pruebas", 0) + 1
+            except Exception as e:                   # noqa: BLE001
+                r["errores"] += 1
+                log.warning(f"[FTDiscord] no se pudo hacer la prueba {pid}: {e}")
 
     def _personalizar(self, tipo: str, texto: str, voz: str) -> tuple:
         """Encabezado (primera línea del mensaje) y frase de voz al inicio."""
@@ -217,6 +255,7 @@ class Anunciador:
             cfg = None
         if cfg is not None:
             self.config_remota = cfg
+        await self._pruebas(r)
         nuevas = []
         for s in await self.fuente.leer(self.cursor):
             self.cursor = max(self.cursor, s["id"])

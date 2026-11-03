@@ -177,8 +177,46 @@ async def escenario_canales():
     check("sin publicar_en todo sigue por el canal general", len(general) == n_g + 1)
 
 
+async def escenario_pruebas():
+    """🧪 Botón «Probar» de Admin → Discord."""
+    print("\n8 · Mensaje de prueba")
+    general, en_canal = [], []
+
+    async def pub_general(t):
+        general.append(t)
+
+    async def pub_en(canal_id, t):
+        if canal_id == 666:
+            raise RuntimeError("Missing Access")
+        en_canal.append((canal_id, t))
+
+    SENALES.clear()
+    ahora = AHORA.isoformat()
+    CONFIG.update(estado=200, cuerpo={"version": 1, "pausa": False, "tipos": {}, "pruebas": [
+        {"id": 1, "tipo": "PARLEY_CASAS", "canal_id": "1234567890123456789", "creado_en": ahora, "texto": "🧪 PRUEBA · Casas"},
+        {"id": 2, "tipo": "PARLEY_KALSHI", "canal_id": None, "creado_en": ahora, "texto": "🧪 PRUEBA · Kalshi"},
+        {"id": 3, "tipo": "MTO_VIVO", "canal_id": "666", "creado_en": ahora, "texto": "🧪 PRUEBA · MTO"},
+        {"id": 4, "tipo": "UNDER_PICK", "canal_id": None, "creado_en": "2026-10-08T10:00:00+00:00", "texto": "🧪 vieja"}]})
+    fuente = Fuente("https://ft-intel.test", "secreto", transport=httpx.MockTransport(ft_intel))
+    a = Anunciador(fuente, pub_general, encolar, "UTC", set(), set(), 30, reloj=lambda: AHORA, publicar_en=pub_en)
+    await a.arrancar(0)
+    r = await a.ciclo()
+    check("prueba con canal: llega a ese canal", en_canal == [(1234567890123456789, "🧪 PRUEBA · Casas")], en_canal)
+    check("prueba sin canal propio: sale en el general", any("PRUEBA · Kalshi" in g and "canal general" in g for g in general), general)
+    check("canal sin permiso: el fallo se avisa en el general", any("no pude escribir en el canal 666" in g for g in general), general)
+    check("una prueba vieja no se hace", not any("vieja" in g for g in general))
+    n = len(general) + len(en_canal)
+    await a.ciclo()
+    check("la misma prueba no se repite en el ciclo siguiente", len(general) + len(en_canal) == n)
+    CONFIG["cuerpo"]["pausa"] = True
+    CONFIG["cuerpo"]["pruebas"] = [{"id": 9, "tipo": "PARLEY_CASAS", "canal_id": None, "creado_en": ahora, "texto": "🧪 pausa"}]
+    await a.ciclo()
+    check("con pausa general no se hace", not any("pausa" in g for g in general))
+
+
 asyncio.run(escenario())
 asyncio.run(escenario_canales())
+asyncio.run(escenario_pruebas())
 print(f"\n{'─' * 60}")
 if _fallos:
     print(f"{_ok} OK, {len(_fallos)} FALLAS: {_fallos}")
