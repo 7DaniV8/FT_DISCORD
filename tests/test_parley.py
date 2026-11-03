@@ -26,7 +26,7 @@ def check(n, cond, det=""):
 TXT = ("🎾 FULLTENIS · KALSHI\n**🚀 PARLEY SOÑADOR**\n🏆 Cuota combinada objetivo: 30.00+ (esta: **31.40**)\n\n📋 Selecciones\n"
        "**1. A vs B** · ATP · 02/11 10:00\n   Selección: **A gana**\n📊 Probabilidad conjunta: **4.1%**\n⚠️ Riesgo: ALTO\n"
        "🧪 **Combinación teórica para seguimiento**")
-for tipo in ("PARLEY_KALSHI", "PARLEY_CASAS"):
+for tipo in ("PARLEY_KALSHI", "PARLEY_CASAS", "PARLEY_ATP_OVER"):
     s = {"id": 1, "tipo": tipo, "jugador1": None, "jugador2": None, "datos": {"texto_discord": TXT}, "foto": {}}
     t = texto_canal(s)
     check(f"{tipo}: el texto del servicio sale tal cual, solo el encabezado en negrita",
