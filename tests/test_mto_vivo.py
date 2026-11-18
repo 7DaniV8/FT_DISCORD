@@ -119,6 +119,16 @@ check("el texto dice quién y contra quién",
       "TIEMPO MÉDICO" in c and "Kovacs L" in c and "Sziklai E" in c, c)
 check("nombre completo queda igual", nombre_para_voz("Carlos Alcaraz") == "Carlos Alcaraz")
 check("varias iniciales sueltas se quitan", nombre_para_voz("Kovacs-Sebestyen L. M") == "Kovacs-Sebestyen")
+# 17/11/2026 (Daniel): el nivel UTR de los dos en el mensaje del canal (no en la voz)
+su = {**s, "datos": {**s["datos"], "utr_jugador": 10.01, "utr_rival": 10.46, "utr_jugador_verificado": True,
+                     "utr_rival_verificado": False}}
+cu = texto_canal(su)
+check("UTR de los dos con ΔUTR, el no verificado con *",
+      "📈 UTR: Kovacs L **10.01** · Sziklai E **10.46*** · ΔUTR 0.45" in cu and "sin verificar" in cu, cu)
+check("la voz no dice el UTR", "UTR" not in texto_voz(su, "America/Bogota"))
+check("sin datos de UTR el mensaje queda igual que antes", "UTR" not in texto_canal(s))
+cu2 = texto_canal({**s, "datos": {**s["datos"], "utr_jugador": None, "utr_rival": 12.3, "utr_rival_verificado": True}})
+check("si falta uno: s/UTR y sin ΔUTR", "Kovacs L s/UTR · Sziklai E **12.30**" in cu2 and "ΔUTR" not in cu2, cu2)
 check("MTO_VIVO va por texto y por voz por defecto",
       "MTO_VIVO" in config.TIPOS_TEXTO and "MTO_VIVO" in config.TIPOS_VOZ)
 print()

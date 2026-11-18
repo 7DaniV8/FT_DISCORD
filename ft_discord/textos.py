@@ -745,6 +745,26 @@ def _cuota_txt(v) -> str:
         return str(v)
 
 
+def _utr_mto_txt(v, verificado) -> str:
+    try:
+        return f"**{float(v):.2f}**" + ("" if verificado else "*")
+    except (TypeError, ValueError):
+        return "s/UTR"
+
+
+def _linea_utr_mto(d: dict) -> str:
+    """📈 UTR: Fulano **13.45** · Mengano **12.10** · ΔUTR 1.35"""
+    t = (f"📈 UTR: {d.get('jugador')} {_utr_mto_txt(d.get('utr_jugador'), d.get('utr_jugador_verificado'))}"
+         f" · {d.get('rival') or 'rival'} {_utr_mto_txt(d.get('utr_rival'), d.get('utr_rival_verificado'))}")
+    try:
+        t += f" · ΔUTR {abs(float(d['utr_jugador']) - float(d['utr_rival'])):.2f}"
+    except (KeyError, TypeError, ValueError):
+        pass
+    if any(d.get(k) is not None and not d.get(k + "_verificado") for k in ("utr_jugador", "utr_rival")):
+        t += " _(* sin verificar)_"
+    return t
+
+
 def texto_mto_vivo(s: dict) -> str:
     d = s.get("datos") or {}
     rival = d.get("rival")
@@ -752,6 +772,10 @@ def texto_mto_vivo(s: dict) -> str:
     if d.get("torneo"):
         linea2 += f" · {d['torneo']}"
     texto = f"🩹 **TIEMPO MÉDICO** — solicitado por **{d.get('jugador')}**\n{linea2}"
+    if d.get("utr_jugador") is not None or d.get("utr_rival") is not None:
+        # 17/11/2026 (Daniel: «colocar el nivel UTR de los tenistas en el mensaje que llega al Discord»). Lo trae RankingFTR;
+        # * = UTR sin verificar; s/UTR = no lo tenemos.
+        texto += "\n" + _linea_utr_mto(d)
     if d.get("cuota_pre_jugador") and d.get("cuota_pre_rival"):
         # 22/10/2026 (Rubén): las cuotas PRE-PARTIDO, para saber quién era el favorito
         # formato de Rubén: una línea por jugador; la ⭐ de la línea del partido ya marca al favorito
